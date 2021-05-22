@@ -6,4 +6,4 @@
 
 export PYTHONPATH=/home/aasgarik/projects/def-karthikp/aasgarik/reasilience
 source /home/aasgarik/projects/def-karthikp/aasgarik/dnnfault/venv/bin/activate
-pythor actions.py
+python actions.py
