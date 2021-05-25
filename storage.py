@@ -2,9 +2,11 @@ import os
 import pickle
 
 
-def get_storage_filename(key, defaults=None, extension='', storage='results'):
+def get_storage_filename(key, defaults=None, extension='', storage=None):
     if defaults is None:
         defaults = {}
+    if storage is None:
+        storage = 'results'
     return os.path.join(storage, '-'.join(
         '{}:{}'.format(k, v) for k, v in sorted(key.items()) if defaults.get(k) != v
     ) + extension)
