@@ -1,3 +1,5 @@
+import sys
+
 import torch
 from torch.nn.utils import prune
 
@@ -55,7 +57,8 @@ def evaluate():
                            'batch': i,
                            'amount': InjectionMixin.counter,
                            'bounds': bounds})
-        print('Did batch {}'.format(i))
+        print('Did batch {}'.format(i), flush=True)
+        break
     return evaluation
 
 
