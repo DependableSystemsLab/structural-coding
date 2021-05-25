@@ -1,4 +1,4 @@
-import sys
+from copy import copy
 
 import torch
 from torch.nn.utils import prune
@@ -7,6 +7,7 @@ from pruning.datasets import get_data_loader
 from pruning.injection import InjectionMixin, convert, ObserverRelu, InjectionConv2D, InjectionLinear, ClipperRelu
 from pruning.models import get_model
 from pruning.parameters import CONFIG, DEFAULTS, BASELINE_CONFIG
+from pruning.settings import BATCH_SIZE
 from storage import extend, load
 
 
@@ -35,7 +36,9 @@ def evaluate():
                 torch.nn.Linear: InjectionLinear,
                 torch.nn.ReLU: ClipperRelu
             })
-            bounds = load(BASELINE_CONFIG, DEFAULTS, 'baseline')[-1]['bounds']
+            model_baseline_config = copy(BASELINE_CONFIG)
+            model_baseline_config['model'] = CONFIG['model']
+            bounds = load(model_baseline_config, DEFAULTS, 'baseline')[-1]['bounds']
             for j, m in enumerate(model.modules()):
                 if isinstance(m, ClipperRelu):
                     m.bounds = bounds[j]
@@ -55,6 +58,7 @@ def evaluate():
         evaluation.append({'top5': top5,
                            'label': label,
                            'batch': i,
+                           'batch_size': BATCH_SIZE,
                            'amount': InjectionMixin.counter,
                            'bounds': bounds})
         print('Did batch {}'.format(i), flush=True)
