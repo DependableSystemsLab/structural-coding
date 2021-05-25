@@ -58,7 +58,6 @@ def evaluate():
                            'amount': InjectionMixin.counter,
                            'bounds': bounds})
         print('Did batch {}'.format(i), flush=True)
-        break
     return evaluation
 
 
