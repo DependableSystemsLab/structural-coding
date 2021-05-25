@@ -3,20 +3,28 @@ from itertools import product
 
 
 DOMAIN = {
-    'model': ('vgg16', 'resnet50', 'googlenet', 'resnet101', 'resnet18', 'vgg19', 'alexnet', 'mobilenet_v3_large',
+    'model': ('vgg16', 'resnet50',
+              # 'googlenet',  commented out because of not using ReLU
+              'resnet101', 'resnet18', 'vgg19', 'alexnet', 'mobilenet_v3_large',
               'mobilenet_v3_small'),
     'pruning_method': ('global_unstructured',),
     'pruning_factor': (0., .05, .1, .15, .2, .25, .3, .35, .4, .45, .5, .55, .6, .65, .7, .75, .8, .85, .9, .95),
-    'inject': (True, False),
+    'inject': (False, True),
     'faults': (0, ),
+    'protection': ('none', 'clipper')
 }
 
 CONSTRAINTS = (
     lambda c: sum(1 if c[k] else 0 for k in ('inject', 'faults', 'pruning_factor')) <= 1,
-    lambda c: not c['inject'] and not c['pruning_factor'],
+    lambda c: not c['pruning_factor'],
+    lambda c: c['inject'],
 )
 
-DEFAULTS = {}
+DEFAULTS = {
+    'protection': 'none'
+}
+
+BASELINE_CONFIG = {k: DOMAIN[k][0] for k in DOMAIN}
 
 SLURM_ARRAY = []
 

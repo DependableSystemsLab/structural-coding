@@ -18,10 +18,10 @@ def store(key, value, defaults=None):
     os.rename(filename + '.tmp', filename + '.pkl')
 
 
-def load(key, defaults=None):
+def load(key, defaults=None, storage=None):
     try:
-        filename = get_storage_filename(key, defaults)
-        with open(filename + '.tmp', mode='rb') as f:
+        filename = get_storage_filename(key, defaults, storage=storage)
+        with open(filename + '.pkl', mode='rb') as f:
             return pickle.load(f)
     except OSError:
         return None

@@ -2,10 +2,10 @@ import torch
 from torch.nn.utils import prune
 
 from pruning.datasets import get_data_loader
-from pruning.injection import InjectionMixin, convert, ObserverRelu
+from pruning.injection import InjectionMixin, convert, ObserverRelu, InjectionConv2D, InjectionLinear, ClipperRelu
 from pruning.models import get_model
-from pruning.parameters import CONFIG, DEFAULTS
-from storage import extend
+from pruning.parameters import CONFIG, DEFAULTS, BASELINE_CONFIG
+from storage import extend, load
 
 
 def evaluate():
@@ -25,7 +25,18 @@ def evaluate():
             amount=CONFIG['pruning_factor'],
         )
     elif CONFIG['inject']:
-        model = convert(model)
+        if CONFIG['protection'] == 'none':
+            model = convert(model)
+        else:
+            model = convert(model, mapping={
+                torch.nn.Conv2d: InjectionConv2D,
+                torch.nn.Linear: InjectionLinear,
+                torch.nn.ReLU: ClipperRelu
+            })
+            bounds = load(BASELINE_CONFIG, DEFAULTS, 'baseline')[-1]['bounds']
+            for j, m in enumerate(model.modules()):
+                if isinstance(m, ClipperRelu):
+                    m.bounds = bounds[j]
     else:
         model = convert(model, {torch.nn.ReLU: ObserverRelu})
     model.eval()
