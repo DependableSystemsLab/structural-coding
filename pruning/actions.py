@@ -2,7 +2,7 @@ import torch
 from torch.nn.utils import prune
 
 from pruning.datasets import get_data_loader
-from pruning.injection import InjectionMixin, convert
+from pruning.injection import InjectionMixin, convert, ObserverRelu
 from pruning.models import get_model
 from pruning.parameters import CONFIG, DEFAULTS
 from storage import extend
@@ -24,8 +24,10 @@ def evaluate():
             pruning_method=prune.L1Unstructured,
             amount=CONFIG['pruning_factor'],
         )
-    if CONFIG['inject']:
+    elif CONFIG['inject']:
         model = convert(model)
+    else:
+        model = convert(model, {torch.nn.ReLU: ObserverRelu})
     model.eval()
     dataset = get_data_loader()
     evaluation = []
@@ -33,10 +35,15 @@ def evaluate():
         InjectionMixin.counter = 0
         model_out = model(image)
         top5 = torch.topk(model_out, 5).indices
+        bounds = {}
+        for j, m in enumerate(model.modules()):
+            if isinstance(m, ObserverRelu):
+                bounds[j] = (m.min, m.max)
         evaluation.append({'top5': top5,
                            'label': label,
                            'batch': i,
-                           'amount': InjectionMixin.counter})
+                           'amount': InjectionMixin.counter,
+                           'bounds': bounds})
         print('Did batch {}'.format(i))
     return evaluation
 

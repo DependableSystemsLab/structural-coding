@@ -13,6 +13,7 @@ DOMAIN = {
 
 CONSTRAINTS = (
     lambda c: sum(1 if c[k] else 0 for k in ('inject', 'faults', 'pruning_factor')) <= 1,
+    lambda c: not c['inject'] and not c['pruning_factor'],
 )
 
 DEFAULTS = {}

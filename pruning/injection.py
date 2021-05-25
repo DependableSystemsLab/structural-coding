@@ -68,6 +68,36 @@ class InjectionLinear(torch.nn.Linear, InjectionMixin):
         return F.linear(input, self.perturb_weight(self.weight), self.bias)
 
 
+class ObserverRelu(torch.nn.ReLU):
+
+    def __init__(self, inplace: bool = False):
+        super().__init__(inplace)
+        self.min = self.max = 0
+
+    def forward(self, input: Tensor) -> Tensor:
+        result = super().forward(input)
+        self.min = min(self.min, float(torch.min(result)))
+        self.max = max(self.max, float(torch.max(result)))
+        return result
+
+    @classmethod
+    def from_original(cls, original: torch.nn.ReLU):
+        return cls()
+
+
+class ClipperRelu(torch.nn.ReLU):
+    def __init__(self, inplace: bool = False, bounds=None):
+        super().__init__(inplace)
+        self.bounds = bounds
+
+    def forward(self, input: Tensor) -> Tensor:
+        return torch.clip(super().forward(input), *self.bounds)
+
+    @classmethod
+    def from_original(cls, original: torch.nn.ReLU):
+        return cls()
+
+
 def convert(module, mapping=None, in_place=False):
     if mapping is None:
         mapping = {
