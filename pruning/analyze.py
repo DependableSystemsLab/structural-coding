@@ -1,3 +1,4 @@
+import math
 from copy import copy
 
 import torch
@@ -27,7 +28,19 @@ def sdc(baseline, target):
             target_top1 = top1
         else:
             target_top1 = torch.cat((target_top1, top1), dim=0)
-    print(len(baseline_top1), len(label), len(target_top1))
+    unit_baseline_top1 = baseline_top1
+    unit_label = label
+    while len(baseline_top1) < len(target_top1):
+        baseline_top1 = torch.cat((baseline_top1, unit_baseline_top1), dim=0)
+        label = torch.cat((label, unit_label), dim=0)
+    n = len(target)
+    correct = label == target_top1
+    base_correct = label == baseline_top1
+    corrupted = torch.logical_and(torch.logical_not(correct), base_correct)
+    sdc = torch.sum(corrupted) / torch.sum(base_correct)
+    z = 1.96  # 95% confidence interval
+    error = z * math.sqrt(sdc * (1 - sdc) / n)
+    return float(sdc), error
 
 
 def draw_compression_correlation():
@@ -35,13 +48,17 @@ def draw_compression_correlation():
         config = copy(BASELINE_CONFIG)
         config['model'] = model
         baseline_data = load(config, DEFAULTS)
-        config['pruning_factor'] = 0.1
+        config['pruning_factor'] = 0.4
         pruned_data = load(config, DEFAULTS)
         config['inject'] = True
+        config['pruning_factor'] = 0.0
         faulty_data = load(config, DEFAULTS)
         config['protection'] = 'clipper'
         clipper_data = load(config, DEFAULTS)
-        sdc(baseline_data, pruned_data)
+        pruned_sdc, pruned_error = sdc(baseline_data, pruned_data)
+        clipped_sdc, clipped_error = sdc(baseline_data, clipper_data)
+        faulty_sdc, faulty_error = sdc(baseline_data, faulty_data)
+        print(model, clipped_sdc / faulty_sdc, pruned_sdc)
 
 
 if __name__ == '__main__':
