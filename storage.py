@@ -32,5 +32,5 @@ def load(key, defaults=None, storage=None):
 def extend(key, value, defaults):
     result = load(key, defaults) or []
     result.extend(value)
-    store(key, value, defaults)
+    store(key, result, defaults)
 
