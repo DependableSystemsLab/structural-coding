@@ -18,6 +18,7 @@ DOMAIN = {
 CONSTRAINTS = (
     lambda c: c['inject'],
     lambda c: c['faults'] == 10,
+    lambda c: c['protection'] == 'none',
     lambda c: c['model'] in ('vgg16', 'resnet50')
 )
 
