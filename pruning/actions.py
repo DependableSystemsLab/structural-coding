@@ -14,14 +14,6 @@ from storage import extend, load
 
 def evaluate():
     model = get_model()
-    parameters_to_prune = ()
-    for name, param in model.named_parameters():
-        if name.endswith('weight'):
-            module_path = name.split('.')[:-1]
-            module = model
-            for edge in module_path:
-                module = getattr(module, edge)
-            parameters_to_prune += ((module, 'weight'),)
     if CONFIG['inject']:
         if CONFIG['protection'] == 'none':
             model, max_injection_index = convert(model, mapping={
@@ -46,6 +38,16 @@ def evaluate():
         })
 
     if CONFIG['pruning_factor']:
+
+        parameters_to_prune = ()
+        for name, param in model.named_parameters():
+            if name.endswith('weight'):
+                module_path = name.split('.')[:-1]
+                module = model
+                for edge in module_path:
+                    module = getattr(module, edge)
+                parameters_to_prune += ((module, 'weight'),)
+
         prune.global_unstructured(
             parameters_to_prune,
             pruning_method=prune.L1Unstructured,

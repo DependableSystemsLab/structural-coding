@@ -118,7 +118,31 @@ def get_prunability():
     return prunability
 
 
+def draw_compress_resilience():
+    for model in ('vgg16', 'resnet50'):
+        for protection in ('none', 'clipper'):
+            x = []
+            y = []
+            for factor in DOMAIN['pruning_factor']:
+                config = copy(BASELINE_CONFIG)
+                config['model'] = model
+                config['pruning_factor'] = factor
+                config['protection'] = protection
+                config['inject'] = True
+                config['faults'] = 10
+                pruned_data = load(config, DEFAULTS)
+                top1, label = merge(pruned_data)
+                y.append(float(torch.sum(top1 == label)) / len(label))
+                x.append(factor)
+            plt.plot(x, y, label=model)
+    plt.xlabel('portion of removed weights')
+    plt.ylabel('accuracy')
+    plt.legend()
+    plt.show()
+
+
 if __name__ == '__main__':
     # draw_prunability()
-    draw_compression_correlation()
+    # draw_compression_correlation()
+    draw_compress_resilience()
 
