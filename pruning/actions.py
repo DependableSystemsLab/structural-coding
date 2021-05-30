@@ -27,7 +27,6 @@ def evaluate():
             model, max_injection_index = convert(model, mapping={
                 torch.nn.Conv2d: InjectionConv2D,
                 torch.nn.Linear: InjectionLinear,
-                torch.nn.ReLU: torch.nn.ReLU
             })
         else:
             model, max_injection_index = convert(model, mapping={
