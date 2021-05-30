@@ -56,7 +56,8 @@ def evaluate():
     model.eval()
     dataset = get_data_loader()
     evaluation = []
-    random.seed(2021)
+    seed = 2021
+    random.seed(seed)
     for i, (image, label) in enumerate(dataset):
         InjectionMixin.counter = 0
         if CONFIG['faults']:
@@ -75,6 +76,7 @@ def evaluate():
                            'batch_size': BATCH_SIZE,
                            'amount': InjectionMixin.counter,
                            'injections': copy(InjectionMixin.indices),
+                           'seed': seed,
                            'bounds': bounds})
         print('Did batch {}'.format(i), flush=True)
     return evaluation
