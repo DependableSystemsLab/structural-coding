@@ -1,3 +1,4 @@
+from abc import ABCMeta, abstractmethod
 from copy import deepcopy
 from typing import Optional
 
@@ -5,24 +6,20 @@ import torch.quantization
 from torch import Tensor
 from torch.nn import functional as F
 
+from pruning.parameters import CONFIG
 
-class InjectionMixin:
 
-    ber = 1e-9
+class InjectionMixinBase(metaclass=ABCMeta):
     counter = 0
+    indices = []
 
+    @abstractmethod
     def perturb_weight_sign(self, sign):
-        flipped_sign = 1 - sign
-        flipped_mask = torch.rand(sign.shape, device=sign.device) < self.ber
-        return flipped_mask * flipped_sign + torch.logical_not(flipped_mask) * sign
+        pass
 
+    @abstractmethod
     def perturb_weight_exponent(self, exponent):
-        additive = torch.zeros(exponent.shape, device=exponent.device)
-        for bit_magnitude in (1, 2, 4, 8, 16, 32, 64, 127):
-            mask = torch.logical_not(torch.rand(exponent.shape, device=exponent.device) < self.ber)
-            flip_sign = torch.masked_fill(- (torch.floor(exponent / bit_magnitude) % 2 - 0.5) * 2, mask, 0)
-            additive += flip_sign * bit_magnitude
-        return exponent + additive
+        pass
 
     def perturb_weight(self, weight):
         original_weight = weight
@@ -38,6 +35,77 @@ class InjectionMixin:
         weight = ((-1) ** perturbed_sign) * torch.abs(weight) * (2 ** (perturbed_exponent - exponent))
         InjectionMixin.counter += int(torch.sum(original_weight != weight))
         return weight
+
+
+class BerInjectionMixin(InjectionMixinBase):
+    ber = 1e-9
+
+    def perturb_weight_sign(self, sign):
+        flipped_sign = 1 - sign
+        flipped_mask = torch.rand(sign.shape, device=sign.device) < self.ber
+        return flipped_mask * flipped_sign + torch.logical_not(flipped_mask) * sign
+
+    def perturb_weight_exponent(self, exponent):
+        additive = torch.zeros(exponent.shape, device=exponent.device)
+        for bit_magnitude in (1, 2, 4, 8, 16, 32, 64, 127):
+            mask = torch.logical_not(torch.rand(exponent.shape, device=exponent.device) < self.ber)
+            flip_sign = torch.masked_fill(- (torch.floor(exponent / bit_magnitude) % 2 - 0.5) * 2, mask, 0)
+            additive += flip_sign * bit_magnitude
+        return exponent + additive
+
+
+class PositionInjectionMixin(InjectionMixinBase):
+
+    def perturb_weight(self, weight):
+        if [
+            i for i in self.indices
+            if 0 <= i - self.injection_index < self.injection_length
+        ]:
+            return super().perturb_weight(weight)
+        else:
+            return weight
+
+    def perturb_weight_sign(self, sign):
+        indices_to_inject = [(i - self.injection_index) // 9 for i in self.indices
+                             if (
+                                     self.injection_index <= i < self.injection_index + self.injection_length and
+                                     (i - self.injection_index) % 9 == 0
+                             )]
+        shape = sign.shape
+        if indices_to_inject:
+            sign = sign.flatten()
+            for i in indices_to_inject:
+                sign[i] = 1 - sign[i]
+            return sign.reshape(shape)
+        else:
+            return sign
+
+    def perturb_weight_exponent(self, exponent):
+        indices_to_inject = [i - self.injection_index for i in self.indices
+                             if (
+                                     self.injection_index <= i < self.injection_index + self.injection_length and
+                                     i % 9 != 0
+                             )]
+        shape = exponent.shape
+        if indices_to_inject:
+            exponent = exponent.flatten()
+            for index in indices_to_inject:
+                weight_index = index // 9
+                bit_index = index % 9 - 1
+                bit_magnitude = 2 ** bit_index
+                if (exponent[weight_index] // bit_magnitude) % 2:
+                    exponent[weight_index] -= bit_magnitude
+                else:
+                    exponent[weight_index] += bit_magnitude
+            return exponent.reshape(shape)
+        else:
+            return exponent
+
+
+if not CONFIG['faults']:
+    InjectionMixin = BerInjectionMixin
+else:
+    InjectionMixin = PositionInjectionMixin
 
 
 class InjectionConv2D(torch.nn.Conv2d, InjectionMixin):
@@ -98,7 +166,16 @@ class ClipperRelu(torch.nn.ReLU):
         return cls()
 
 
-def convert(module, mapping=None, in_place=False):
+class CounterReference:
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.counter = 0
+
+
+def convert(module, mapping=None, in_place=False, injection_index=None):
+    if injection_index is None:
+        injection_index = CounterReference()
     if mapping is None:
         mapping = {
             torch.nn.Conv2d: InjectionConv2D,
@@ -110,12 +187,21 @@ def convert(module, mapping=None, in_place=False):
     reassign = {}
     for name, mod in module.named_children():
         if list(mod.named_children()):
-            convert(mod, mapping, True)
+            convert(mod, mapping, True, injection_index)
             continue
         if mod.__class__ in mapping:
             reassign[name] = mapping[mod.__class__].from_original(mod)
+            if hasattr(reassign[name], 'weight'):
+                reassign[name].injection_index = injection_index.counter
+                weight_shape = reassign[name].weight.shape
+                weight_size = 1
+                for d in weight_shape:
+                    weight_size *= d
+                injection_length = weight_size * 9
+                injection_index.counter += injection_length
+                reassign[name].injection_length = injection_length
 
     for key, value in reassign.items():
         module._modules[key] = value
 
-    return module
+    return module, injection_index.counter

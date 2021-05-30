@@ -1,3 +1,4 @@
+import random
 from copy import copy
 
 import torch
@@ -21,17 +22,15 @@ def evaluate():
             for edge in module_path:
                 module = getattr(module, edge)
             parameters_to_prune += ((module, 'weight'),)
-    if CONFIG['pruning_factor']:
-        prune.global_unstructured(
-            parameters_to_prune,
-            pruning_method=prune.L1Unstructured,
-            amount=CONFIG['pruning_factor'],
-        )
-    elif CONFIG['inject']:
+    if CONFIG['inject']:
         if CONFIG['protection'] == 'none':
-            model = convert(model)
+            model, max_injection_index = convert(model, mapping={
+                torch.nn.Conv2d: InjectionConv2D,
+                torch.nn.Linear: InjectionLinear,
+                torch.nn.ReLU: torch.nn.ReLU
+            })
         else:
-            model = convert(model, mapping={
+            model, max_injection_index = convert(model, mapping={
                 torch.nn.Conv2d: InjectionConv2D,
                 torch.nn.Linear: InjectionLinear,
                 torch.nn.ReLU: ClipperRelu
@@ -43,12 +42,27 @@ def evaluate():
                 if isinstance(m, ClipperRelu):
                     m.bounds = bounds[j]
     else:
-        model = convert(model, {torch.nn.ReLU: ObserverRelu})
+        model, max_injection_index = convert(model, mapping={
+            torch.nn.ReLU: ObserverRelu
+        })
+
+    if CONFIG['pruning_factor']:
+        prune.global_unstructured(
+            parameters_to_prune,
+            pruning_method=prune.L1Unstructured,
+            amount=CONFIG['pruning_factor'],
+        )
+
     model.eval()
     dataset = get_data_loader()
     evaluation = []
+    random.seed(2021)
     for i, (image, label) in enumerate(dataset):
         InjectionMixin.counter = 0
+        if CONFIG['faults']:
+            InjectionMixin.indices.clear()
+            for _ in range(CONFIG['faults']):
+                InjectionMixin.indices.append(random.randint(0, max_injection_index))
         model_out = model(image)
         top5 = torch.topk(model_out, 5).indices
         bounds = {}
@@ -60,6 +74,7 @@ def evaluate():
                            'batch': i,
                            'batch_size': BATCH_SIZE,
                            'amount': InjectionMixin.counter,
+                           'injections': copy(InjectionMixin.indices),
                            'bounds': bounds})
         print('Did batch {}'.format(i), flush=True)
     return evaluation

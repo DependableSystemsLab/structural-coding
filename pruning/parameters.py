@@ -11,14 +11,14 @@ DOMAIN = {
     'pruning_method': ('global_unstructured',),
     'pruning_factor': (0., .05, .1, .15, .2, .25, .3, .35, .4, .45, .5, .55, .6, .65, .7, .75, .8, .85, .9, .95),
     'inject': (False, True),
-    'faults': (0, ),
+    'faults': (0, 10),
     'protection': ('none', 'clipper')
 }
 
 CONSTRAINTS = (
-    lambda c: sum(1 if c[k] else 0 for k in ('inject', 'faults', 'pruning_factor')) <= 1,
-    lambda c: not c['pruning_factor'],
     lambda c: c['inject'],
+    lambda c: c['faults'] == 10,
+    lambda c: c['model'] in ('vgg16', 'resnet50')
 )
 
 DEFAULTS = {
@@ -34,13 +34,9 @@ for combination in product(*DOMAIN.values()):
     if all(constraint(c) for constraint in CONSTRAINTS):
         SLURM_ARRAY.append(c)
 
-resnet101 = copy(BASELINE_CONFIG)
-resnet101['model'] = 'resnet101'
-SLURM_ARRAY.append(resnet101)
-
 CONFIG = SLURM_ARRAY[int(os.environ.get('SLURM_ARRAY_TASK_ID'))]
 
 
 if __name__ == '__main__':
-
     print(len(SLURM_ARRAY))
+
