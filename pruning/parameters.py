@@ -10,15 +10,16 @@ DOMAIN = {
     'pruning_method': ('global_unstructured', 'structured'),
     'pruning_factor': (0., .05, .1, .15, .2, .25, .3, .35, .4, .45, .5, .55, .6, .65, .7, .75, .8, .85, .9, .95),
     'inject': (False, True),
-    'faults': (0, 10),
+    'faults': (0, 5, 10),
     'protection': ('none', 'clipper')
 }
 
 CONSTRAINTS = (
-    lambda c: (c['inject'] and c['faults'] == 10) or (not c['inject'] and not c['faults']),
+    lambda c: (c['inject'] and c['faults'] == 5) or (not c['inject'] and not c['faults']),
     lambda c: c['pruning_method'] == 'structured',
     lambda c: not (c['protection'] == 'clipper' and not c['inject']),
-    lambda c: c['model'] in ('vgg16', 'resnet50')
+    lambda c: c['model'] in ('vgg16', 'resnet50'),
+    lambda c: c['pruning_factor'] < 0.2,
 )
 
 DEFAULTS = {
