@@ -48,11 +48,17 @@ def evaluate():
                     module = getattr(module, edge)
                 parameters_to_prune += ((module, 'weight'),)
 
-        prune.global_unstructured(
-            parameters_to_prune,
-            pruning_method=prune.L1Unstructured,
-            amount=CONFIG['pruning_factor'],
-        )
+        if CONFIG['pruning_method'] == 'global_unstructured':
+            prune.global_unstructured(
+                parameters_to_prune,
+                pruning_method=prune.L1Unstructured,
+                amount=CONFIG['pruning_factor'],
+            )
+        elif CONFIG['pruning_method'] == 'structured':
+            for module, name in parameters_to_prune:
+                prune.ln_structured(module, name, CONFIG['pruning_factor'], 1, dim=0)
+        else:
+            assert False
 
     model.eval()
     dataset = get_data_loader()

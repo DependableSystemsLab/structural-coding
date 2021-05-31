@@ -26,13 +26,14 @@ class InjectionMixinBase(metaclass=ABCMeta):
         sign = 1 * (weight < 0)
         perturbed_sign = self.perturb_weight_sign(sign)
         denormalized_mask = torch.logical_and(0 <= weight, weight < 2 ** (-126))
-        normalized_mask = torch.logical_not(denormalized_mask)
-        exponent = normalized_mask * (torch.floor(torch.log2(torch.abs(weight))) + 127)
+        exponent = torch.masked_fill(torch.floor(torch.log2(torch.abs(weight))) + 127, denormalized_mask, 0)
         perturbed_exponent = self.perturb_weight_exponent(exponent)
         # add normalization bias
         weight = weight + (2 ** (-126)) * (torch.logical_and(perturbed_exponent != 0, exponent == 0))
         # apply change in sign and exponent
         weight = ((-1) ** perturbed_sign) * torch.abs(weight) * (2 ** (perturbed_exponent - exponent))
+        if hasattr(self, 'weight_mask'):
+            weight = torch.masked_fill(weight, torch.logical_not(self.weight_mask), 0)
         InjectionMixin.counter += int(torch.sum(original_weight != weight))
         return weight
 
@@ -73,7 +74,7 @@ class PositionInjectionMixin(InjectionMixinBase):
                              )]
         shape = sign.shape
         if indices_to_inject:
-            sign = sign.flatten()
+            sign = torch.clone(sign.flatten())
             for i in indices_to_inject:
                 sign[i] = 1 - sign[i]
             return sign.reshape(shape)
@@ -88,7 +89,7 @@ class PositionInjectionMixin(InjectionMixinBase):
                              )]
         shape = exponent.shape
         if indices_to_inject:
-            exponent = exponent.flatten()
+            exponent = torch.clone(exponent.flatten())
             for index in indices_to_inject:
                 weight_index = index // 9
                 bit_index = index % 9 - 1
