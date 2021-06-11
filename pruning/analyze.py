@@ -119,24 +119,36 @@ def get_prunability():
 
 
 def draw_compress_resilience():
-    for model in ('vgg16', 'resnet50'):
+    for model in ('vgg16', ):
         for protection in ('none', 'clipper'):
-            x = []
-            y = []
-            for factor in DOMAIN['pruning_factor']:
-                config = copy(BASELINE_CONFIG)
-                config['model'] = model
-                config['pruning_factor'] = factor
-                config['protection'] = protection
-                config['inject'] = True
-                config['faults'] = 10
-                pruned_data = load(config, DEFAULTS)
-                top1, label = merge(pruned_data)
-                y.append(float(torch.sum(top1 == label)) / len(label))
-                x.append(factor)
-            plt.plot(x, y, label=model)
+            for inject, faults in ((True, 10), (False, 0)):
+                x = []
+                y = []
+                for factor in (0., 0.05, 0.15, 0.2):
+                    config = copy(BASELINE_CONFIG)
+                    config['model'] = model
+                    config['pruning_factor'] = factor
+                    config['pruning_method'] = 'structured'
+                    config['protection'] = protection
+                    config['inject'] = inject
+                    config['faults'] = faults
+                    pruned_data = load(config, DEFAULTS)
+                    if pruned_data is None:
+                        continue
+                    config['protection'] = 'none'
+                    config['faults'] = 0
+                    config['inject'] = False
+                    baseline = load(config, DEFAULTS)
+                    top1, label = merge(pruned_data)
+                    # y.append(float(torch.sum(top1 == label)) / len(label))
+                    y.append(sdc(baseline, pruned_data))
+                    x.append(factor)
+                if x:
+                    plt.errorbar(x, [t[0] for t in y], [t[1] for t in y], label='{} {}'.format(protection, faults))
+                    # plt.plot(x, y, label='{} {}'.format(protection, faults))
     plt.xlabel('portion of removed weights')
     plt.ylabel('accuracy')
+    plt.title('VGG SDC')
     plt.legend()
     plt.show()
 
