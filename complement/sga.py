@@ -6,7 +6,7 @@ from typing import Optional, Callable
 import numpy as np
 import torch
 import torchvision
-from pytorchfi.core import fault_injection as pfi_core
+#from pytorchfi.core import fault_injection as pfi_core
 from torch import Tensor, nn as nn
 from torchvision.models.resnet import _resnet, Bottleneck
 
@@ -100,6 +100,8 @@ for i, (x, y) in enumerate(data_loader):
     l = loss(model_output, y)
     l.backward()
     print(i)
+    if i == 7:
+        break
 
 
 k = 5
@@ -112,11 +114,11 @@ for i in range(len(parameters)):
         grads.append((g, i, j))
 
 grads.sort(reverse=True)
-skip = 63
-for i in range(skip, skip + 1, 1):
+skip = 512
+for i in range(skip, skip + 2, 1):
     g, layer, index = grads[i]
     tensor_index = np.unravel_index(index, parameters[layer].shape)
     print(layer, tensor_index)
     with torch.no_grad():
-        parameters[layer][tensor_index] *= 2 ** 16
+        parameters[layer][tensor_index] *= 2 ** 4
     print(torch.topk(model(x), k=k))
