@@ -93,16 +93,14 @@ print(relu_counter)
 model.eval()
 data_loader = get_data_loader()
 
-x, y = next(iter(data_loader))
-shape = x.shape
-pfi_model = pfi_core(model, shape[2], shape[3], shape[0])
-
-# ClipperAttackRelu.very_index = (3, 0, 237, 62, 34)
-
 model.zero_grad()
-model_output = model(x)
-l = loss(model_output, y)
-l.backward()
+
+for i, (x, y) in enumerate(data_loader):
+    model_output = model(x)
+    l = loss(model_output, y)
+    l.backward()
+    print(i)
+
 
 k = 5
 print(torch.topk(model_output, k=k))
