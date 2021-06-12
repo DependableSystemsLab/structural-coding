@@ -5,7 +5,7 @@ import torch
 from torch.nn.utils import prune
 
 from pruning.datasets import get_data_loader
-from pruning.injection import InjectionMixin, convert, ObserverRelu, InjectionConv2D, InjectionLinear, ClipperRelu
+from pruning.injection import InjectionMixin, convert, ObserverRelu, InjectionConv2D, InjectionLinear, RangerReLU
 from pruning.models import get_model
 from pruning.parameters import CONFIG, DEFAULTS, BASELINE_CONFIG
 from pruning.settings import BATCH_SIZE
@@ -24,13 +24,13 @@ def evaluate():
             model, max_injection_index = convert(model, mapping={
                 torch.nn.Conv2d: InjectionConv2D,
                 torch.nn.Linear: InjectionLinear,
-                torch.nn.ReLU: ClipperRelu
+                torch.nn.ReLU: RangerReLU
             })
             model_baseline_config = copy(BASELINE_CONFIG)
             model_baseline_config['model'] = CONFIG['model']
             bounds = load(model_baseline_config, DEFAULTS, 'baseline')[-1]['bounds']
             for j, m in enumerate(model.modules()):
-                if isinstance(m, ClipperRelu):
+                if isinstance(m, RangerReLU):
                     m.bounds = bounds[j]
     else:
         model, max_injection_index = convert(model, mapping={

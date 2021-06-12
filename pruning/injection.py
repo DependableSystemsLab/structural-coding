@@ -154,13 +154,28 @@ class ObserverRelu(torch.nn.ReLU):
         return cls()
 
 
-class ClipperRelu(torch.nn.ReLU):
+class RangerReLU(torch.nn.ReLU):
     def __init__(self, inplace: bool = False, bounds=None):
         super().__init__(inplace)
         self.bounds = bounds
 
     def forward(self, input: Tensor) -> Tensor:
         return torch.clip(super().forward(input), *self.bounds)
+
+    @classmethod
+    def from_original(cls, original: torch.nn.ReLU):
+        return cls()
+
+
+class ClipperReLU(torch.nn.ReLU):
+    def __init__(self, inplace: bool = False, bounds=None):
+        super().__init__(inplace)
+        self.bounds = bounds
+
+    def forward(self, input: Tensor) -> Tensor:
+        result = torch.clip(super().forward(input), *self.bounds)
+        result *= result != self.bounds[1]
+        return result
 
     @classmethod
     def from_original(cls, original: torch.nn.ReLU):

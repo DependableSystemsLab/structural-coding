@@ -34,7 +34,6 @@ for combination in product(*DOMAIN.values()):
     c = {k: v for k, v in zip(DOMAIN.keys(), combination)}
     if all(constraint(c) for constraint in CONSTRAINTS):
         SLURM_ARRAY.append(c)
-        print(c)
 
 CONFIG = SLURM_ARRAY[int(os.environ.get('SLURM_ARRAY_TASK_ID'))]
 
