@@ -50,7 +50,6 @@ class MyBottleneck(Bottleneck):
 model = _resnet('resnet50', MyBottleneck, [3, 4, 6, 3], True, True)
 loss = torch.nn.CrossEntropyLoss()
 
-
 if CONFIG['protection'] == 'clipper':
 
     model, max_injection_index = convert(model, mapping={
@@ -88,7 +87,7 @@ else:
         model_output = model(x)
         l = loss(model_output, y)
         l.backward()
-        baseline.append({'top5': torch.topk(model_output, k=k),
+        baseline.append({'top5': torch.topk(model_output, k=k).indices,
                          'label': y,
                          'batch': i,
                          'batch_size': BATCH_SIZE,
@@ -114,12 +113,12 @@ evaluation = []
 
 for i, (x, y) in enumerate(data_loader):
     model_output = model(x)
-    evaluation.append({'top5': torch.topk(model_output, k=k),
-                     'label': y,
-                     'batch': i,
-                     'batch_size': BATCH_SIZE,
-                     'amount': 1,
-                     'injections': [grads[CONFIG['rank']]]})
+    evaluation.append({'top5': torch.topk(model_output, k=k).indices,
+                       'label': y,
+                       'batch': i,
+                       'batch_size': BATCH_SIZE,
+                       'amount': 1,
+                       'injections': [grads[CONFIG['rank']]]})
     print("Done with batch {} after injection".format(i))
 
 store(CONFIG, evaluation, DEFAULTS)
