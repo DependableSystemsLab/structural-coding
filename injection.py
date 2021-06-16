@@ -1,5 +1,6 @@
 from abc import ABCMeta, abstractmethod
 from copy import deepcopy
+from struct import pack, unpack
 from typing import Optional
 
 import torch.quantization
@@ -221,3 +222,15 @@ def convert(module, mapping=None, in_place=False, injection_index=None):
         module._modules[key] = value
 
     return module, injection_index.counter
+
+
+def bitflip(f, pos):
+    """ Single bit-flip in 32 bit floats """
+
+    f_ = pack('f', f)
+    b = list(unpack('BBBB', f_))
+    [q, r] = divmod(pos, 8)
+    b[q] ^= 1 << r
+    f_ = pack('BBBB', *b)
+    f = unpack('f', f_)
+    return f[0]

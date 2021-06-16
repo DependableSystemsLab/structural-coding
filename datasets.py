@@ -29,7 +29,7 @@ def get_image_net():
                              std=[0.229, 0.224, 0.225])
     ])
     dataset = SparseImageNet('../data/random20classes_FI', transform=data_transform)
-    return torch.utils.data.DataLoader(dataset, batch_size=BATCH_SIZE)
+    return torch.utils.data.DataLoader(dataset, batch_size=BATCH_SIZE, )
 
 
 def get_data_loader():

@@ -1,0 +1,32 @@
+import os
+from itertools import product
+
+
+DOMAIN = {
+    'model': ('resnet50', ),
+    'rank': tuple(range(10)),
+    'bit_position': tuple(range(22, 31)),
+    'protection': ('none', 'clipper')
+}
+
+CONSTRAINTS = (
+)
+
+DEFAULTS = {
+}
+
+BASELINE_CONFIG = {k: DOMAIN[k][0] for k in DOMAIN}
+
+SLURM_ARRAY = []
+
+for combination in product(*DOMAIN.values()):
+    c = {k: v for k, v in zip(DOMAIN.keys(), combination)}
+    if all(constraint(c) for constraint in CONSTRAINTS):
+        SLURM_ARRAY.append(c)
+
+CONFIG = SLURM_ARRAY[int(os.environ.get('SLURM_ARRAY_TASK_ID'))]
+
+
+if __name__ == '__main__':
+    print(len(SLURM_ARRAY))
+

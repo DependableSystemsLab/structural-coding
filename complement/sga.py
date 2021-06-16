@@ -1,19 +1,18 @@
 import csv
-import subprocess
-from copy import copy
+import os
+import pickle
 from typing import Optional, Callable
 
 import numpy as np
 import torch
-import torchvision
-#from pytorchfi.core import fault_injection as pfi_core
 from torch import Tensor, nn as nn
 from torchvision.models.resnet import _resnet, Bottleneck
 
+from complement.parameters import CONFIG, DEFAULTS
+from complement.settings import BATCH_SIZE
 from datasets import get_data_loader
-from pruning.injection import convert, RangerReLU, ClipperReLU
-from pruning.parameters import DEFAULTS, BASELINE_CONFIG
-from storage import load
+from injection import convert, ClipperReLU, bitflip
+from storage import store
 
 
 class MyBottleneck(Bottleneck):
@@ -52,73 +51,75 @@ model = _resnet('resnet50', MyBottleneck, [3, 4, 6, 3], True, True)
 loss = torch.nn.CrossEntropyLoss()
 
 
-class ClipperAttackRelu(ClipperReLU):
-    gradients = []
-    activations = []
+if CONFIG['protection'] == 'clipper':
 
-    def __init__(self, inplace: bool = False, bounds=None):
-        super().__init__(inplace, bounds)
-        self.module_index = None
+    model, max_injection_index = convert(model, mapping={
+        torch.nn.ReLU: ClipperReLU
+    }, in_place=True)
+    bounds = []
+    with open('Resnet50_bounds_ImageNet_train20p_act.txt') as bounds_file:
+        r = csv.reader(bounds_file)
+        for row in r:
+            bounds.append(tuple(map(float, row)))
 
-    def record_grad(self, grad):
-        self.gradients.append((self.module_index, grad))
-
-    def forward(self, input: Tensor) -> Tensor:
-        result = super().forward(input)
-        result.register_hook(self.record_grad)
-        self.activations.append((self.module_index, result))
-        return result
-
-
-model, max_injection_index = convert(model, mapping={
-    torch.nn.ReLU: ClipperAttackRelu
-}, in_place=True)
-model_baseline_config = copy(BASELINE_CONFIG)
-model_baseline_config['model'] = 'resnet50'
-
-bounds = []
-with open('Resnet50_bounds_ImageNet_train20p_act.txt') as bounds_file:
-    r = csv.reader(bounds_file)
-    for row in r:
-        bounds.append(tuple(map(float, row)))
-
-relu_counter = 0
-for j, m in enumerate(model.modules()):
-    if isinstance(m, ClipperAttackRelu):
-        m.bounds = bounds[relu_counter]
-        m.module_index = relu_counter
-        relu_counter += 1
-print(relu_counter)
+    relu_counter = 0
+    for j, m in enumerate(model.modules()):
+        if isinstance(m, ClipperReLU):
+            m.bounds = bounds[relu_counter]
+            m.module_index = relu_counter
+            relu_counter += 1
+    print(relu_counter)
 
 model.eval()
 data_loader = get_data_loader()
+parameters = list(model.parameters())
 
-model.zero_grad()
+k = 5
+
+if os.path.exists('baseline.pkl'):
+    with open('nonrecurring.pkl', mode='rb') as grad_file:
+        grads, baseline = pickle.load(grad_file)
+else:
+    model.zero_grad()
+    grads = []
+    baseline = []
+
+    for i, (x, y) in enumerate(data_loader):
+        model_output = model(x)
+        l = loss(model_output, y)
+        l.backward()
+        baseline.append({'top5': torch.topk(model_output, k=k),
+                         'label': y,
+                         'batch': i,
+                         'batch_size': BATCH_SIZE,
+                         'amount': 0,
+                         'injections': []})
+        print("Done with batch {}".format(i))
+
+    for i in range(len(parameters)):
+        topk = torch.topk(parameters[i].grad.flatten(), k=64)
+        for j, g in zip(topk.indices, topk.values):
+            grads.append((g, i, j))
+    grads.sort(reverse=True)
+    with open('nonrecurring.pkl', mode='wb') as grad_file:
+        pickle.dump((grads, baseline), grad_file)
+
+g, layer, index = grads[CONFIG['rank']]
+tensor_index = np.unravel_index(index, parameters[layer].shape)
+print(layer, tensor_index)
+with torch.no_grad():
+    parameters[layer][tensor_index] = bitflip(parameters[layer][tensor_index], CONFIG['bit_position'])
+
+evaluation = []
 
 for i, (x, y) in enumerate(data_loader):
     model_output = model(x)
-    l = loss(model_output, y)
-    l.backward()
-    print(i)
-    if i == 7:
-        break
+    evaluation.append({'top5': torch.topk(model_output, k=k),
+                     'label': y,
+                     'batch': i,
+                     'batch_size': BATCH_SIZE,
+                     'amount': 1,
+                     'injections': [grads[CONFIG['rank']]]})
+    print("Done with batch {} after injection".format(i))
 
-
-k = 5
-print(torch.topk(model_output, k=k))
-parameters = list(model.parameters())
-grads = []
-for i in range(len(parameters)):
-    topk = torch.topk(parameters[i].grad.flatten(), k=64)
-    for j, g in zip(topk.indices, topk.values):
-        grads.append((g, i, j))
-
-grads.sort(reverse=True)
-skip = 512
-for i in range(skip, skip + 2, 1):
-    g, layer, index = grads[i]
-    tensor_index = np.unravel_index(index, parameters[layer].shape)
-    print(layer, tensor_index)
-    with torch.no_grad():
-        parameters[layer][tensor_index] *= 2 ** 4
-    print(torch.topk(model(x), k=k))
+store(CONFIG, evaluation, DEFAULTS)
