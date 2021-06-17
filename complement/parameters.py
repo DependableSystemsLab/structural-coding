@@ -5,7 +5,7 @@ from itertools import product
 DOMAIN = {
     'model': ('resnet50', ),
     'rank': tuple(range(10)),
-    'bit_position': tuple(range(22, 32)),
+    'bit_position': tuple(range(23, 32)),
     'protection': ('none', 'clipper')
 }
 

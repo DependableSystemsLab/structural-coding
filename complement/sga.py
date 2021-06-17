@@ -75,8 +75,9 @@ parameters = list(model.parameters())
 
 k = 5
 
-if os.path.exists('baseline.pkl'):
-    with open('nonrecurring.pkl', mode='rb') as grad_file:
+one_time_stuff = 'nonrecurring.pkl'
+if os.path.exists(one_time_stuff):
+    with open(one_time_stuff, mode='rb') as grad_file:
         grads, baseline = pickle.load(grad_file)
 else:
     model.zero_grad()
@@ -100,7 +101,7 @@ else:
         for j, g in zip(topk.indices, topk.values):
             grads.append((g, i, j))
     grads.sort(reverse=True)
-    with open('nonrecurring.pkl', mode='wb') as grad_file:
+    with open(one_time_stuff, mode='wb') as grad_file:
         pickle.dump((grads, baseline), grad_file)
 
 g, layer, index = grads[CONFIG['rank']]
