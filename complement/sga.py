@@ -11,7 +11,7 @@ from torchvision.models.resnet import _resnet, Bottleneck
 from complement.parameters import CONFIG, DEFAULTS
 from complement.settings import BATCH_SIZE
 from datasets import get_data_loader
-from injection import convert, ClipperReLU, bitflip
+from injection import convert, bitflip, ClipperReLU
 from storage import store
 
 
