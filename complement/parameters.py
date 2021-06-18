@@ -4,12 +4,13 @@ from itertools import product
 
 DOMAIN = {
     'model': ('resnet50', ),
-    'rank': tuple(range(10)),
+    'rank': tuple(range(64)),
     'bit_position': tuple(range(23, 32)),
     'protection': ('none', 'clipper')
 }
 
 CONSTRAINTS = (
+    lambda c: c['bit_position'] == 25,
 )
 
 DEFAULTS = {

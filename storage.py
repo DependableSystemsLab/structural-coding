@@ -21,8 +21,12 @@ def store(key, value, defaults=None):
 
 
 def load(key, defaults=None, storage=None):
+    filename = get_storage_filename(key, defaults, storage=storage)
+    return load_pickle(filename)
+
+
+def load_pickle(filename):
     try:
-        filename = get_storage_filename(key, defaults, storage=storage)
         with open(filename + '.pkl', mode='rb') as f:
             return pickle.load(f)
     except OSError:
