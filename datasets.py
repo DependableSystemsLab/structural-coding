@@ -32,6 +32,20 @@ def get_image_net():
     return torch.utils.data.DataLoader(dataset, batch_size=BATCH_SIZE, )
 
 
+def get_fashion_mnist():
+    data_transform = transforms.Compose([
+        transforms.ToTensor(),
+        transforms.Normalize(mean=[0.456],
+                             std=[0.225])
+    ])
+    data_loader = torch.utils.data.DataLoader(torchvision.datasets.FashionMNIST('.fashion_mnist', download=True,
+                                                                                train=False,
+                                                                                transform=data_transform),
+                                              batch_size=BATCH_SIZE,
+                                              shuffle=False, )
+    return data_loader
+
+
 def get_data_loader():
     return get_image_net()
 
