@@ -10,7 +10,6 @@ DOMAIN = {
 }
 
 CONSTRAINTS = (
-    lambda c: c['bit_position'] == 25,
 )
 
 DEFAULTS = {
