@@ -6,13 +6,16 @@ DOMAIN = {
     'model': ('resnet50', ),
     'rank': tuple(range(64)),
     'bit_position': tuple(range(23, 32)),
-    'protection': ('none', 'clipper')
+    'protection': ('none', 'clipper'),
+    'ranking': ('gradient', 'random')
 }
 
 CONSTRAINTS = (
+    lambda c: c['ranking'] == 'random',
 )
 
 DEFAULTS = {
+    'ranking': 'gradient'
 }
 
 BASELINE_CONFIG = {k: DOMAIN[k][0] for k in DOMAIN}

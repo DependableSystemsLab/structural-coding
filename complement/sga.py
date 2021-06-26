@@ -78,10 +78,11 @@ k = 5
 one_time_stuff = 'nonrecurring.pkl'
 if os.path.exists(one_time_stuff):
     with open(one_time_stuff, mode='rb') as grad_file:
-        grads, baseline = pickle.load(grad_file)
+        grads, baseline, rands = pickle.load(grad_file)
 else:
     model.zero_grad()
     grads = []
+    rands = []
     baseline = []
 
     for i, (x, y) in enumerate(data_loader):
@@ -97,14 +98,23 @@ else:
         print("Done with batch {}".format(i))
 
     for i in range(len(parameters)):
-        topk = torch.topk(parameters[i].grad.flatten(), k=64)
+        grad_flatten = parameters[i].grad.grad_flatten()
+        rand_flatten = torch.rand(grad_flatten.shape, device=grad_flatten.device)
+        topk = torch.topk(grad_flatten, k=64)
         for j, g in zip(topk.indices, topk.values):
             grads.append((g, i, j))
+        topk = torch.topk(rand_flatten, k=64)
+        for j, g in zip(topk.indices, topk.values):
+            rands.append((g, i, j))
     grads.sort(reverse=True)
+    rands.sort(reverse=True)
     with open(one_time_stuff, mode='wb') as grad_file:
-        pickle.dump((grads, baseline), grad_file)
+        pickle.dump((grads, baseline, rands), grad_file)
 
-g, layer, index = grads[CONFIG['rank']]
+if CONFIG['ranking'] == 'gradient':
+    g, layer, index = grads[CONFIG['rank']]
+else:
+    g, layer, index = rands[CONFIG['rank']]
 tensor_index = np.unravel_index(index, parameters[layer].shape)
 print(layer, tensor_index)
 with torch.no_grad():
