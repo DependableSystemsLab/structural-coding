@@ -98,7 +98,7 @@ else:
         print("Done with batch {}".format(i))
 
     for i in range(len(parameters)):
-        grad_flatten = parameters[i].grad.grad_flatten()
+        grad_flatten = parameters[i].grad.flatten()
         rand_flatten = torch.rand(grad_flatten.shape, device=grad_flatten.device)
         topk = torch.topk(grad_flatten, k=64)
         for j, g in zip(topk.indices, topk.values):
