@@ -12,6 +12,7 @@ DOMAIN = {
 
 CONSTRAINTS = (
     lambda c: c['ranking'] == 'random',
+    lambda c: c['model'] == 'resnet50',
 )
 
 DEFAULTS = {
