@@ -8,9 +8,10 @@ import torch
 from torch import Tensor, nn as nn
 from torchvision.models.resnet import _resnet, Bottleneck
 
+from complement.models import FashionMNISTTutorial
 from complement.parameters import CONFIG, DEFAULTS
 from complement.settings import BATCH_SIZE
-from datasets import get_data_loader
+from datasets import get_data_loader, get_fashion_mnist
 from injection import convert, bitflip, ClipperReLU
 from storage import store
 
@@ -47,7 +48,14 @@ class MyBottleneck(Bottleneck):
         return out
 
 
-model = _resnet('resnet50', MyBottleneck, [3, 4, 6, 3], True, True)
+if CONFIG['model'] == 'resnet50':
+    model = _resnet('resnet50', MyBottleneck, [3, 4, 6, 3], True, True)
+elif CONFIG['model'] == 'FashionMNISTTutorial':
+    model = FashionMNISTTutorial(pretrained=True)
+else:
+    assert False
+
+
 loss = torch.nn.CrossEntropyLoss()
 
 if CONFIG['protection'] == 'clipper':
@@ -56,7 +64,13 @@ if CONFIG['protection'] == 'clipper':
         torch.nn.ReLU: ClipperReLU
     }, in_place=True)
     bounds = []
-    with open('Resnet50_bounds_ImageNet_train20p_act.txt') as bounds_file:
+    if CONFIG['model'] == 'resnet50':
+        bounds_filename = 'Resnet50_bounds_ImageNet_train20p_act.txt'
+    elif CONFIG['model'] == 'FashionMNISTTutorial':
+        bounds_filename = 'FashionMNISTTutorial_bounds.txt'
+    else:
+        assert False
+    with open(bounds_filename) as bounds_file:
         r = csv.reader(bounds_file)
         for row in r:
             bounds.append(tuple(map(float, row)))
@@ -70,7 +84,13 @@ if CONFIG['protection'] == 'clipper':
     print(relu_counter)
 
 model.eval()
-data_loader = get_data_loader()
+if CONFIG['model'] == 'resnet50':
+    data_loader = get_data_loader()
+elif CONFIG['model'] == 'FashionMNISTTutorial':
+    data_loader = get_fashion_mnist()
+else:
+    assert False
+
 parameters = list(model.parameters())
 
 k = 5
@@ -98,12 +118,13 @@ else:
         print("Done with batch {}".format(i))
 
     for i in range(len(parameters)):
-        grad_flatten = parameters[i].grad.grad_flatten()
+        grad_flatten = parameters[i].grad.flatten()
         rand_flatten = torch.rand(grad_flatten.shape, device=grad_flatten.device)
-        topk = torch.topk(grad_flatten, k=64)
+        max_flatten = min(64, len(grad_flatten))
+        topk = torch.topk(grad_flatten, k=max_flatten)
         for j, g in zip(topk.indices, topk.values):
             grads.append((g, i, j))
-        topk = torch.topk(rand_flatten, k=64)
+        topk = torch.topk(rand_flatten, k=max_flatten)
         for j, g in zip(topk.indices, topk.values):
             rands.append((g, i, j))
     grads.sort(reverse=True)

@@ -3,7 +3,7 @@ from itertools import product
 
 
 DOMAIN = {
-    'model': ('resnet50', ),
+    'model': ('resnet50', 'FashionMNISTTutorial'),
     'rank': tuple(range(64)),
     'bit_position': tuple(range(23, 32)),
     'protection': ('none', 'clipper'),

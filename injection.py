@@ -51,10 +51,19 @@ class ClipperReLU(torch.nn.ReLU):
     def __init__(self, inplace: bool = False, bounds=None):
         super().__init__(inplace)
         self.bounds = bounds
+        self.profile = False
 
     def forward(self, input: Tensor) -> Tensor:
         forward = super().forward(input)
         forward = torch.nan_to_num(forward, 0, 0, 0)
+        if self.profile:
+            if self.bounds is None:
+                self.bounds = (float(torch.min(forward)), float(torch.max(forward)))
+            else:
+                self.bounds = (
+                    min(float(torch.min(forward)), self.bounds[0]),
+                    max(float(torch.max(forward)), self.bounds[1])
+                )
         result = torch.clip(forward, *self.bounds)
         result *= result != self.bounds[1]
         return result
