@@ -11,7 +11,9 @@ DOMAIN = {
 }
 
 CONSTRAINTS = (
-    lambda c: c['model'].startswith('FashionMNISTTutorial'),
+    lambda c: c['model'].startswith('FashionMNISTTutorial_smooth'),
+    lambda c: c['ranking'] == 'gradient',
+    lambda c: c['protection'] == 'clipper',
 )
 
 DEFAULTS = {

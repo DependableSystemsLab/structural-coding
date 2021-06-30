@@ -11,7 +11,10 @@ from injection import convert
 train = False
 
 checkpoint_file_path = 'fashion_mnist_tutorial_smooth.pkl'
-model = FashionMNISTTutorial(pretrained=True, weights=checkpoint_file_path)
+if os.path.exists(checkpoint_file_path):
+    model = FashionMNISTTutorial(pretrained=True, weights=checkpoint_file_path)
+else:
+    model = FashionMNISTTutorial(pretrained=True, weights='fashion_mnist_tutorial.pkl')
 
 if train:
     model, _ = convert(model, mapping={
@@ -45,7 +48,10 @@ for epoch in range(60):
             with open(checkpoint_file_path, mode='rb') as checkpoint_file:
                 model.load_state_dict(pickle.load(checkpoint_file))
 
-    for x, y in training_data_loader:
+    data_loader = evaluation_data_loader
+    if train:
+        data_loader = evaluation_data_loader
+    for x, y in data_loader:
         model_output = model(x)
         if train:
             l = loss(model_output, y)
