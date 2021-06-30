@@ -11,7 +11,7 @@ DOMAIN = {
 }
 
 CONSTRAINTS = (
-    lambda c: c['model'] == 'FashionMNISTTutorial_smooth',
+    lambda c: c['model'].startswith('FashionMNISTTutorial'),
 )
 
 DEFAULTS = {

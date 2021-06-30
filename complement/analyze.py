@@ -6,22 +6,27 @@ from storage import load, load_pickle
 
 
 def draw_sdc():
-    nonrecurring_pickle_name = 'nonrecurring_FashionMNISTTutorial'
-    _, baseline, _ = load_pickle(nonrecurring_pickle_name)
-    print(sdc(baseline, baseline))
+    baselines = {}
+    _, baselines['FashionMNISTTutorial'], _ = load_pickle('nonrecurring_FashionMNISTTutorial')
+    _, baselines['FashionMNISTTutorial_smooth'], _ = load_pickle('nonrecurring_FashionMNISTTutorial_smooth')
+    _, baselines['resnet50'], _ = load_pickle('nonrecurring_resnet50')
     sdcs = defaultdict(list)
+    key = lambda c: (c['model'], c['protection'], c['ranking'])
     missing = False
+    percent = len(SLURM_ARRAY) // 100
     for i, config in enumerate(SLURM_ARRAY):
         faulty = load(config, defaults=DEFAULTS)
         if faulty is None:
             print("{} in parameters array is missing.".format(i))
             missing = True
         else:
-            sdcs[config['rank']].append(sdc(baseline, faulty))
+            sdcs[key(config)].append(sdc(baselines[config['model']], faulty))
+        if i % percent == 0:
+            print(i // percent, '%')
     if missing:
         return
-    for i in range(64):
-        print(sum(j for j, _ in sdcs[i]) / len(sdcs[i]))
+    for i in sdcs:
+        print(i, sum(j for j, _ in sdcs[i]) / len(sdcs[i]))
 
 
 draw_sdc()
