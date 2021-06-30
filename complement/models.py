@@ -13,7 +13,7 @@ from injection import convert
 
 class FashionMNISTTutorial(nn.Module):
 
-    def __init__(self, pretrained=True):
+    def __init__(self, pretrained=True, weights='fashion_mnist_tutorial.pkl'):
         super().__init__()
         self.linear1 = nn.Linear(28 * 28, 128)
         self.relu = nn.ReLU()
@@ -21,7 +21,7 @@ class FashionMNISTTutorial(nn.Module):
         self.linear2 = nn.Linear(128, 10)
         self.softmax = nn.Softmax()
         if pretrained:
-            checkpoint_file_path = 'fashion_mnist_tutorial.pkl'
+            checkpoint_file_path = weights
             with open(checkpoint_file_path, mode='rb') as checkpoint_file:
                 self.load_state_dict(pickle.load(checkpoint_file))
 

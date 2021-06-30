@@ -6,7 +6,8 @@ from storage import load, load_pickle
 
 
 def draw_sdc():
-    _, baseline, _ = load_pickle('nonrecurring')
+    nonrecurring_pickle_name = 'nonrecurring_FashionMNISTTutorial'
+    _, baseline, _ = load_pickle(nonrecurring_pickle_name)
     print(sdc(baseline, baseline))
     sdcs = defaultdict(list)
     for config in SLURM_ARRAY:

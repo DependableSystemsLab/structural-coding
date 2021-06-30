@@ -73,6 +73,23 @@ class ClipperReLU(torch.nn.ReLU):
         return cls()
 
 
+class SmootherReLU(torch.nn.ReLU):
+
+    def __init__(self, sigma=0.05):
+        super().__init__()
+        self.sigma = sigma
+
+    def forward(self, input: Tensor) -> Tensor:
+        if not self.training:
+            return input
+        noise = torch.normal(0., float(torch.std(input) * self.sigma), input.shape, device=input.device)
+        return noise + input
+
+    @classmethod
+    def from_original(cls, original: torch.nn.ReLU):
+        return cls()
+
+
 class CounterReference:
 
     def __init__(self) -> None:
