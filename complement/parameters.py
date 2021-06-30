@@ -12,6 +12,8 @@ DOMAIN = {
 
 CONSTRAINTS = (
     lambda c: c['model'] == 'FashionMNISTTutorial',
+    lambda c: c['protection'] == 'none',
+    lambda c: c['ranking'] == 'random',
 )
 
 DEFAULTS = {

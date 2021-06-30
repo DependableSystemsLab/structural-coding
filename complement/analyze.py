@@ -10,9 +10,16 @@ def draw_sdc():
     _, baseline, _ = load_pickle(nonrecurring_pickle_name)
     print(sdc(baseline, baseline))
     sdcs = defaultdict(list)
-    for config in SLURM_ARRAY:
+    missing = False
+    for i, config in enumerate(SLURM_ARRAY):
         faulty = load(config, defaults=DEFAULTS)
-        sdcs[config['rank']].append(sdc(baseline, faulty))
+        if faulty is None:
+            print("{} in parameters array is missing.".format(i))
+            missing = True
+        else:
+            sdcs[config['rank']].append(sdc(baseline, faulty))
+    if missing:
+        return
     for i in range(64):
         print(sum(j for j, _ in sdcs[i]) / len(sdcs[i]))
 
