@@ -86,8 +86,10 @@ if CONFIG['protection'] == 'clipper':
 model.eval()
 if CONFIG['model'] == 'resnet50':
     data_loader = get_data_loader()
+    one_time_stuff = 'nonrecurring_resnet50.pkl'
 elif CONFIG['model'] == 'FashionMNISTTutorial':
     data_loader = get_fashion_mnist()
+    one_time_stuff = 'nonrecurring_FashionMNISTTutorial.pkl'
 else:
     assert False
 
@@ -95,7 +97,6 @@ parameters = list(model.parameters())
 
 k = 5
 
-one_time_stuff = 'nonrecurring.pkl'
 if os.path.exists(one_time_stuff):
     with open(one_time_stuff, mode='rb') as grad_file:
         grads, baseline, rands = pickle.load(grad_file)

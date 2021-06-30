@@ -38,7 +38,7 @@ def get_fashion_mnist():
         transforms.Normalize(mean=[0.456],
                              std=[0.225])
     ])
-    data_loader = torch.utils.data.DataLoader(torchvision.datasets.FashionMNIST('.data', download=True,
+    data_loader = torch.utils.data.DataLoader(torchvision.datasets.FashionMNIST('../data', download=True,
                                                                                 train=False,
                                                                                 transform=data_transform),
                                               batch_size=BATCH_SIZE,
