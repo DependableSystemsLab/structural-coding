@@ -52,6 +52,8 @@ if CONFIG['model'] == 'resnet50':
     model = _resnet('resnet50', MyBottleneck, [3, 4, 6, 3], True, True)
 elif CONFIG['model'] == 'FashionMNISTTutorial':
     model = FashionMNISTTutorial(pretrained=True)
+elif CONFIG['model'] == 'FashionMNISTTutorial_smooth':
+    model = FashionMNISTTutorial(pretrained=True, weights='fashion_mnist_tutorial_smooth.pkl')
 else:
     assert False
 
@@ -68,6 +70,8 @@ if CONFIG['protection'] == 'clipper':
         bounds_filename = 'Resnet50_bounds_ImageNet_train20p_act.txt'
     elif CONFIG['model'] == 'FashionMNISTTutorial':
         bounds_filename = 'FashionMNISTTutorial_bounds.txt'
+    elif CONFIG['model'] == 'FashionMNISTTutorial_smooth':
+        bounds_filename = 'FashionMNISTTutorial_bounds_smooth.txt'
     else:
         assert False
     with open(bounds_filename) as bounds_file:
@@ -90,6 +94,9 @@ if CONFIG['model'] == 'resnet50':
 elif CONFIG['model'] == 'FashionMNISTTutorial':
     data_loader = get_fashion_mnist()
     one_time_stuff = 'nonrecurring_FashionMNISTTutorial.pkl'
+elif CONFIG['model'] == 'FashionMNISTTutorial_smooth':
+    data_loader = get_fashion_mnist()
+    one_time_stuff = 'nonrecurring_FashionMNISTTutorial_smooth.pkl'
 else:
     assert False
 

@@ -3,7 +3,7 @@ from itertools import product
 
 
 DOMAIN = {
-    'model': ('resnet50', 'FashionMNISTTutorial'),
+    'model': ('resnet50', 'FashionMNISTTutorial', 'FashionMNISTTutorial_smooth'),
     'rank': tuple(range(64)),
     'bit_position': tuple(range(23, 32)),
     'protection': ('none', 'clipper'),
@@ -11,9 +11,7 @@ DOMAIN = {
 }
 
 CONSTRAINTS = (
-    lambda c: c['model'] == 'FashionMNISTTutorial',
-    lambda c: c['protection'] == 'none',
-    lambda c: c['ranking'] == 'random',
+    lambda c: c['model'] == 'FashionMNISTTutorial_smooth',
 )
 
 DEFAULTS = {
