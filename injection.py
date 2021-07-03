@@ -75,12 +75,12 @@ class ClipperReLU(torch.nn.ReLU):
 
 class SmootherReLU(torch.nn.ReLU):
 
-    def __init__(self, sigma=0.05):
+    def __init__(self, sigma=0.1):
         super().__init__()
         self.sigma = sigma
 
     def forward(self, input: Tensor) -> Tensor:
-        if not self.training:
+        if not self.training or self.sigma == 0:
             return input
         noise = torch.normal(0., float(torch.std(input) * self.sigma), input.shape, device=input.device)
         return noise + input

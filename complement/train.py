@@ -9,17 +9,20 @@ from datasets import get_fashion_mnist
 from injection import convert
 
 train = False
+smooth = False
+epochs = 120
 
-checkpoint_file_path = 'fashion_mnist_tutorial_smooth.pkl'
+checkpoint_file_path = 'fashion_mnist_tutorial{}.pkl'.format('_smooth' if smooth else '')
 if os.path.exists(checkpoint_file_path):
     model = FashionMNISTTutorial(pretrained=True, weights=checkpoint_file_path)
 else:
-    model = FashionMNISTTutorial(pretrained=True, weights='fashion_mnist_tutorial.pkl')
+    model = FashionMNISTTutorial(pretrained=False)
 
 if train:
-    model, _ = convert(model, mapping={
-        torch.nn.ReLU: injection.SmootherReLU
-    })
+    if smooth:
+        model, _ = convert(model, mapping={
+            torch.nn.ReLU: injection.SmootherReLU
+        })
 else:
     model, _ = convert(model, mapping={
         torch.nn.ReLU: injection.ClipperReLU
@@ -39,7 +42,7 @@ if train:
 else:
     model.eval()
 
-for epoch in range(60):
+for epoch in range(epochs):
     total_l = 0
     acc = []
     if train:

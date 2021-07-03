@@ -16,9 +16,10 @@ class FashionMNISTTutorial(nn.Module):
     def __init__(self, pretrained=True, weights='fashion_mnist_tutorial.pkl'):
         super().__init__()
         self.linear1 = nn.Linear(28 * 28, 128)
-        self.relu = nn.ReLU()
-        self.dropout = nn.Dropout(0.2)
-        self.linear2 = nn.Linear(128, 10)
+        self.relu1 = nn.ReLU()
+        self.linear2 = nn.Linear(128, 128)
+        self.relu2 = nn.ReLU()
+        self.linear3 = nn.Linear(128, 10)
         self.softmax = nn.Softmax()
         if pretrained:
             checkpoint_file_path = weights
@@ -28,9 +29,10 @@ class FashionMNISTTutorial(nn.Module):
     def forward(self, x):
         x = torch.flatten(x, 1)
         x = self.linear1(x)
-        x = self.relu(x)
-        x = self.dropout(x)
+        x = self.relu1(x)
         x = self.linear2(x)
+        x = self.relu2(x)
+        x = self.linear3(x)
         x = self.softmax(x)
         return x
 
