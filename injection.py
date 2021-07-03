@@ -95,3 +95,23 @@ class CounterReference:
     def __init__(self) -> None:
         super().__init__()
         self.counter = 0
+
+
+def top_percent(tensor, percent):
+    size = 1
+    for d in tensor.shape:
+        size *= d
+    desired_size = round(percent * size)
+    minimum = torch.min(tensor)
+    maximum = torch.max(tensor)
+    while True:
+        between = (maximum + minimum) / 2
+        s = torch.sum(tensor >= between)
+        if s > desired_size:
+            minimum = between
+        elif s < desired_size:
+            maximum = between
+        else:
+            break
+    return tensor > between
+

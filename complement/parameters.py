@@ -7,13 +7,12 @@ DOMAIN = {
     'rank': tuple(range(64)),
     'bit_position': tuple(range(23, 32)),
     'protection': ('none', 'clipper'),
-    'ranking': ('gradient', 'random')
+    'ranking': ('gradient', 'random', 'gradient_protected_20')
 }
 
 CONSTRAINTS = (
-    lambda c: c['model'].startswith('resnet50'),
-    # lambda c: c['ranking'] == 'gradient',
-    # lambda c: c['protection'] == 'clipper',
+    lambda c: c['model'] == 'resnet50',
+    lambda c: c['ranking'] == 'gradient_protected_20',
 )
 
 DEFAULTS = {

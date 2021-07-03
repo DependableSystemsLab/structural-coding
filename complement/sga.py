@@ -12,7 +12,7 @@ from complement.models import FashionMNISTTutorial
 from complement.parameters import CONFIG, DEFAULTS
 from complement.settings import BATCH_SIZE
 from datasets import get_data_loader, get_fashion_mnist
-from injection import convert, bitflip, ClipperReLU
+from injection import convert, bitflip, ClipperReLU, top_percent
 from storage import store
 
 
@@ -106,11 +106,12 @@ k = 5
 
 if os.path.exists(one_time_stuff):
     with open(one_time_stuff, mode='rb') as grad_file:
-        grads, baseline, rands = pickle.load(grad_file)
+        grads, baseline, rands, protected_20_rands = pickle.load(grad_file)
 else:
     model.zero_grad()
     grads = []
     rands = []
+    protected_20_rands = []
     baseline = []
 
     for i, (x, y) in enumerate(data_loader):
@@ -135,15 +136,24 @@ else:
         topk = torch.topk(rand_flatten, k=max_flatten)
         for j, g in zip(topk.indices, topk.values):
             rands.append((g, i, j))
+        topk = torch.topk(top_percent(-grad_flatten, 0.80) * rand_flatten, k=max_flatten)
+        for j, g in zip(topk.indices, topk.values):
+            protected_20_rands.append((g, i, j))
     grads.sort(reverse=True)
     rands.sort(reverse=True)
+    protected_20_rands.sort(reverse=True)
     with open(one_time_stuff, mode='wb') as grad_file:
-        pickle.dump((grads, baseline, rands), grad_file)
+        pickle.dump((grads, baseline, rands, protected_20_rands), grad_file)
 
 if CONFIG['ranking'] == 'gradient':
     g, layer, index = grads[CONFIG['rank']]
-else:
+elif CONFIG['ranking'] == 'random':
     g, layer, index = rands[CONFIG['rank']]
+elif CONFIG['ranking'] == 'gradient_protected_20':
+    g, layer, index = protected_20_rands[CONFIG['rank']]
+else:
+    assert False
+
 tensor_index = np.unravel_index(index, parameters[layer].shape)
 print(layer, tensor_index)
 with torch.no_grad():
