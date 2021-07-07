@@ -136,7 +136,7 @@ else:
         topk = torch.topk(rand_flatten, k=max_flatten)
         for j, g in zip(topk.indices, topk.values):
             rands.append((g, i, j))
-        topk = torch.topk(top_percent(-grad_flatten, 0.80) * rand_flatten, k=max_flatten)
+        topk = torch.topk(-top_percent(grad_flatten, 0.20) + rand_flatten, k=max_flatten)
         for j, g in zip(topk.indices, topk.values):
             protected_20_rands.append((g, i, j))
     grads.sort(reverse=True)
