@@ -104,7 +104,7 @@ def top_percent(tensor, percent):
     desired_size = round(percent * size)
     minimum = torch.min(tensor)
     maximum = torch.max(tensor)
-    while True:
+    for i in range(20):
         between = (maximum + minimum) / 2
         s = torch.sum(tensor >= between)
         if s > desired_size:
