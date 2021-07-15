@@ -73,8 +73,45 @@ class ClipperReLU(torch.nn.ReLU):
         return cls()
 
 
+class SmootherReLU(torch.nn.ReLU):
+
+    def __init__(self, sigma=0.1):
+        super().__init__()
+        self.sigma = sigma
+
+    def forward(self, input: Tensor) -> Tensor:
+        if not self.training or self.sigma == 0:
+            return input
+        noise = torch.normal(0., float(torch.std(input) * self.sigma), input.shape, device=input.device)
+        return noise + input
+
+    @classmethod
+    def from_original(cls, original: torch.nn.ReLU):
+        return cls()
+
+
 class CounterReference:
 
     def __init__(self) -> None:
         super().__init__()
         self.counter = 0
+
+
+def top_percent(tensor, percent):
+    size = 1
+    for d in tensor.shape:
+        size *= d
+    desired_size = round(percent * size)
+    minimum = torch.min(tensor)
+    maximum = torch.max(tensor)
+    for i in range(20):
+        between = (maximum + minimum) / 2
+        s = torch.sum(tensor >= between)
+        if s > desired_size:
+            minimum = between
+        elif s < desired_size:
+            maximum = between
+        else:
+            break
+    return tensor > between
+

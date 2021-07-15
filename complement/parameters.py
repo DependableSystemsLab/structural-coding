@@ -3,15 +3,16 @@ from itertools import product
 
 
 DOMAIN = {
-    'model': ('resnet50', 'FashionMNISTTutorial'),
+    'model': ('resnet50', 'FashionMNISTTutorial', 'FashionMNISTTutorial_smooth'),
     'rank': tuple(range(64)),
     'bit_position': tuple(range(23, 32)),
     'protection': ('none', 'clipper'),
-    'ranking': ('gradient', 'random')
+    'ranking': ('gradient', 'random', 'gradient_protected_20')
 }
 
 CONSTRAINTS = (
-    lambda c: c['ranking'] == 'random',
+    lambda c: c['model'] == 'resnet50',
+    lambda c: c['ranking'] == 'gradient_protected_20',
 )
 
 DEFAULTS = {
