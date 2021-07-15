@@ -1,6 +1,8 @@
 from collections import defaultdict
 
-from analysis import sdc
+import torch
+
+from analysis import sdc, merge
 from complement.parameters import SLURM_ARRAY, DEFAULTS
 from storage import load, load_pickle
 
@@ -16,4 +18,17 @@ def draw_sdc():
         print(sum(j for j, _ in sdcs[i]) / len(sdcs[i]))
 
 
-draw_sdc()
+def draw_image_dependence():
+
+    _, baseline, _ = load_pickle('nonrecurring')
+    baseline_top1, labels = merge(baseline)
+    per_image_sdc = torch.zeros(baseline_top1.shape, device=baseline_top1.device)
+    for config in SLURM_ARRAY:
+        faulty = load(config, defaults=DEFAULTS)
+        faulty_top1, _ = merge(faulty)
+        per_image_sdc = per_image_sdc + 1. * torch.logical_and(baseline_top1 == labels, faulty_top1 != labels)
+    for i in range(100):
+        print(per_image_sdc)
+
+
+draw_image_dependence()
