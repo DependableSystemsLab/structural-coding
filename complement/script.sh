@@ -10,5 +10,5 @@ INTERNAL_SIZE=20
 for i in $( eval echo {1..$INTERNAL_SIZE} ); do
   export INTERNAL_SLURM_ARRAY_TASK_ID=$(( SLURM_ARRAY_TASK_ID * INTERNAL_SIZE + i - 1 ))
   echo $INTERNAL_SLURM_ARRAY_TASK_ID
-#  python sga.py
+  python sga.py
 done
