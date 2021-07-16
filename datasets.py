@@ -20,7 +20,7 @@ class SparseImageNet(torchvision.datasets.ImageFolder):
         return classes, {k: translator[k] for k, v in class_to_idx.items()}
 
 
-def get_image_net():
+def get_image_net(sampler=None):
     data_transform = transforms.Compose([
         transforms.Resize(299),
         transforms.CenterCrop(299),
@@ -29,7 +29,7 @@ def get_image_net():
                              std=[0.229, 0.224, 0.225])
     ])
     dataset = SparseImageNet('../data/random20classes_FI', transform=data_transform)
-    return torch.utils.data.DataLoader(dataset, batch_size=BATCH_SIZE, )
+    return torch.utils.data.DataLoader(dataset, batch_size=BATCH_SIZE, sampler=sampler)
 
 
 def get_fashion_mnist(train=False):

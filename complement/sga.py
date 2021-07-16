@@ -1,6 +1,7 @@
 import csv
 import os
 import pickle
+import random
 from typing import Optional, Callable
 
 import numpy as np
@@ -11,7 +12,7 @@ from torchvision.models.resnet import _resnet, Bottleneck
 from complement.models import FashionMNISTTutorial
 from complement.parameters import CONFIG, DEFAULTS
 from complement.settings import BATCH_SIZE
-from datasets import get_data_loader, get_fashion_mnist
+from datasets import get_data_loader, get_fashion_mnist, get_image_net
 from injection import convert, bitflip, ClipperReLU, top_percent
 from storage import store
 
@@ -89,7 +90,17 @@ if CONFIG['protection'] == 'clipper':
 
 model.eval()
 if CONFIG['model'] == 'resnet50':
-    data_loader = get_data_loader()
+    if CONFIG['sampler'] == 'none':
+        data_loader = get_image_net()
+    elif CONFIG['sampler'] == 'critical':
+        data_loader = get_image_net(sampler=(4, 10, 14, 16, 23, 27, 39, 51, 53, 64, 68, 109, 111, 120, 124, 131, 139,
+                                             143, 162, 215, 236, 242, 276, 284, 303, 332, 374, 384, 397, 405, 408, 413,
+                                             419, 420, 423, 424, 431, 432, 447, 448, 462, 466, 485, 502, 503, 511, 532,
+                                             536, 538, 540, 563, 581, 621, 662, 673, 677, 690, 693, 701, 733, 767, 774,
+                                             784, 789, 806, 808, 828, 851, 872, 877, 885, 907, 912, 915, 928, 929, 934,
+                                             948, 966, 998))
+    else:
+        assert False
     one_time_stuff = 'nonrecurring_resnet50.pkl'
 elif CONFIG['model'] == 'FashionMNISTTutorial':
     data_loader = get_fashion_mnist()
@@ -102,15 +113,21 @@ else:
 
 parameters = list(model.parameters())
 
+sizes = []
+for i in range(len(parameters)):
+    s = 1
+    for d in parameters[i].shape:
+        s *= d
+    sizes.append(s)
+
 k = 5
 
 if os.path.exists(one_time_stuff):
     with open(one_time_stuff, mode='rb') as grad_file:
-        grads, baseline, rands, protected_20_rands = pickle.load(grad_file)
+        grads, baseline, rands, protected_20_rands, _ = pickle.load(grad_file)
 else:
     model.zero_grad()
     grads = []
-    rands = []
     protected_20_rands = []
     baseline = []
 
@@ -133,22 +150,33 @@ else:
         topk = torch.topk(grad_flatten, k=max_flatten)
         for j, g in zip(topk.indices, topk.values):
             grads.append((g, i, j))
-        topk = torch.topk(rand_flatten, k=max_flatten)
-        for j, g in zip(topk.indices, topk.values):
-            rands.append((g, i, j))
         topk = torch.topk(-(1. * top_percent(grad_flatten, 0.20)) + rand_flatten, k=max_flatten)
         for j, g in zip(topk.indices, topk.values):
             protected_20_rands.append((g, i, j))
+    abs_indices = set()
+    while len(abs_indices) < 250000:
+        abs_indices.add(random.randint(0, sum(sizes)))
+    rands = list(abs_indices)
+    random.shuffle(rands)
     grads.sort(reverse=True)
-    rands.sort(reverse=True)
     protected_20_rands.sort(reverse=True)
     with open(one_time_stuff, mode='wb') as grad_file:
-        pickle.dump((grads, baseline, rands, protected_20_rands), grad_file)
+        pickle.dump((grads, baseline, rands, protected_20_rands, parameters), grad_file)
 
 if CONFIG['ranking'] == 'gradient':
     g, layer, index = grads[CONFIG['rank']]
 elif CONFIG['ranking'] == 'random':
-    g, layer, index = rands[CONFIG['rank']]
+    absolute_index = rands[CONFIG['rank']]
+    layer = None
+    index = None
+    g = None
+    for i, s in enumerate(sizes):
+        if absolute_index < s:
+            layer = i
+            index = absolute_index
+            break
+        else:
+            absolute_index -= s
 elif CONFIG['ranking'] == 'gradient_protected_20':
     g, layer, index = protected_20_rands[CONFIG['rank']]
 else:

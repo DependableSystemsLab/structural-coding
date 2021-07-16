@@ -4,19 +4,22 @@ from itertools import product
 
 DOMAIN = {
     'model': ('resnet50', 'FashionMNISTTutorial', 'FashionMNISTTutorial_smooth'),
-    'rank': tuple(range(64)),
+    'rank': tuple(range(4000)),
     'bit_position': tuple(range(23, 32)),
     'protection': ('none', 'clipper'),
-    'ranking': ('gradient', 'random', 'gradient_protected_20')
+    'ranking': ('gradient', 'random', 'gradient_protected_20'),
+    'sampler': ('none', 'critical'),
 }
 
 CONSTRAINTS = (
     lambda c: c['model'] == 'resnet50',
-    lambda c: c['ranking'] == 'gradient_protected_20',
+    lambda c: c['ranking'] == 'random',
+    lambda c: c['sampler'] == 'critical',
 )
 
 DEFAULTS = {
-    'ranking': 'gradient'
+    'ranking': 'gradient',
+    'sampler': 'none',
 }
 
 BASELINE_CONFIG = {k: DOMAIN[k][0] for k in DOMAIN}
