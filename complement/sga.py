@@ -161,7 +161,7 @@ else:
     grads.sort(reverse=True)
     protected_20_rands.sort(reverse=True)
     with open(one_time_stuff, mode='wb') as grad_file:
-        pickle.dump((grads, baseline, rands, protected_20_rands, parameters), grad_file)
+        pickle.dump((grads, baseline, rands, protected_20_rands, [p.grad for p in parameters]), grad_file)
 
 if CONFIG['ranking'] == 'gradient':
     g, layer, index = grads[CONFIG['rank']]

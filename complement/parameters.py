@@ -15,6 +15,7 @@ CONSTRAINTS = (
     lambda c: c['model'] == 'resnet50',
     lambda c: c['ranking'] == 'random',
     lambda c: c['sampler'] == 'critical',
+    lambda c: c['rank'] >= 500,
 )
 
 DEFAULTS = {
@@ -31,7 +32,7 @@ for combination in product(*DOMAIN.values()):
     if all(constraint(c) for constraint in CONSTRAINTS):
         SLURM_ARRAY.append(c)
 
-CONFIG = SLURM_ARRAY[int(os.environ.get('SLURM_ARRAY_TASK_ID'))]
+CONFIG = SLURM_ARRAY[int(os.environ.get('INTERNAL_SLURM_ARRAY_TASK_ID'))]
 
 
 if __name__ == '__main__':
