@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import torch
 
 from analysis import sdc, merge
+from complement.models import get_model
 from complement.parameters import SLURM_ARRAY, DEFAULTS
 from storage import load, load_pickle
 
@@ -59,6 +60,8 @@ def draw_image_dependence():
 
 def draw_heuristics():
     _, baseline, rands, _, all_grads = load_pickle('nonrecurring_resnet50')
+    model = get_model()
+    parameters = list(model.parameters())
     sizes = [0]
     for p in all_grads:
         s = 1
@@ -90,10 +93,11 @@ def draw_heuristics():
         layer = bisect.bisect_left(sizes, rands[r]) - 1
         flatten_index = rands[r] - sizes[layer]
         grad = float(all_grads[layer].flatten()[flatten_index])
+        param = float(parameters[layer].flatten()[flatten_index])
         critical = 0
         if sum(s) / len(s) >= 0.009:
             critical = 1
-        ranks.append((r, grad, critical))
+        ranks.append((r, abs(param) * grad, critical))
     y_rand = []
     y_grad = []
     y = 0

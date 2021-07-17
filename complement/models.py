@@ -1,12 +1,16 @@
 import os
 import pickle
+from typing import Optional, Callable
 
 import torch
 import torch.nn as nn
 import torchvision.datasets
+from torch import nn as nn, Tensor
 from torch.utils.data import DataLoader
+from torchvision.models.resnet import Bottleneck, _resnet
 
 import injection
+from complement.parameters import CONFIG
 from datasets import get_fashion_mnist
 from injection import convert
 
@@ -69,3 +73,45 @@ class FashionMNISTTutorial(nn.Module):
 #
 #
 #
+class MyBottleneck(Bottleneck):
+
+    def __init__(self, inplanes: int, planes: int, stride: int = 1, downsample: Optional[nn.Module] = None,
+                 groups: int = 1, base_width: int = 64, dilation: int = 1,
+                 norm_layer: Optional[Callable[..., nn.Module]] = None) -> None:
+        super().__init__(inplanes, planes, stride, downsample, groups, base_width, dilation, norm_layer)
+        self.relu2 = torch.nn.ReLU(inplace=True)
+        self.relu3 = torch.nn.ReLU(inplace=True)
+
+    def forward(self, x: Tensor) -> Tensor:
+        identity = x
+
+        out = self.conv1(x)
+        out = self.bn1(out)
+        out = self.relu(out)
+
+        out = self.conv2(out)
+        out = self.bn2(out)
+        out = self.relu2(out)
+
+        out = self.conv3(out)
+        out = self.bn3(out)
+
+        if self.downsample is not None:
+            identity = self.downsample(x)
+
+        out += identity
+        out = self.relu3(out)
+
+        return out
+
+
+def get_model():
+    if CONFIG['model'] == 'resnet50':
+        model = _resnet('resnet50', MyBottleneck, [3, 4, 6, 3], True, True)
+    elif CONFIG['model'] == 'FashionMNISTTutorial':
+        model = FashionMNISTTutorial(pretrained=True)
+    elif CONFIG['model'] == 'FashionMNISTTutorial_smooth':
+        model = FashionMNISTTutorial(pretrained=True, weights='fashion_mnist_tutorial_smooth.pkl')
+    else:
+        assert False
+    return model
