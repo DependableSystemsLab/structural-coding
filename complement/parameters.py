@@ -15,7 +15,7 @@ CONSTRAINTS = (
     lambda c: c['model'] == 'resnet50',
     lambda c: c['ranking'] == 'random',
     lambda c: c['sampler'] == 'critical',
-    lambda c: c['rank'] >= 500,
+    lambda c: c['protection'] == 'clipper',
 )
 
 DEFAULTS = {

@@ -95,9 +95,13 @@ def draw_heuristics():
         grad = float(all_grads[layer].flatten()[flatten_index])
         param = float(parameters[layer].flatten()[flatten_index])
         critical = 0
-        if sum(s) / len(s) >= 0.009:
+        if sum(s) / len(s) >= 0.05:
             critical = 1
-        ranks.append((r, abs(param) * grad, critical))
+        # ranks.append((r, grad, critical))
+        # ranks.append((r, 1 / abs(grad), critical))
+        # ranks.append((r, param, critical))
+        ranks.append((r, 1 / max(1e-20, abs(grad)) * param, critical))
+        # ranks.append((r, -abs(param), critical))
     y_rand = []
     y_grad = []
     y = 0
@@ -105,7 +109,8 @@ def draw_heuristics():
         y += critical
         y_rand.append(y)
     y = 0
-    for r, _, critical in sorted(ranks, key=lambda record: record[1], reverse=True):
+    sorted_params = sorted(ranks, key=lambda record: record[1], reverse=True)
+    for r, _, critical in sorted_params:
         y += critical
         y_grad.append(y)
     plt.plot(range(len(y_rand)), y_rand, label='rand')
