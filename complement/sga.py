@@ -10,7 +10,7 @@ from complement.models import get_model
 from complement.parameters import CONFIG, DEFAULTS
 from complement.settings import BATCH_SIZE
 from datasets import get_fashion_mnist, get_image_net
-from injection import convert, bitflip, ClipperReLU, top_percent
+from injection import convert, bitflip, ClipperReLU, top_percent, RangerReLU
 from storage import store
 
 model = get_model()
@@ -18,10 +18,10 @@ model = get_model()
 
 loss = torch.nn.CrossEntropyLoss()
 
-if CONFIG['protection'] == 'clipper':
+if CONFIG['protection'] in ('ranger', 'clipper'):
 
     model, max_injection_index = convert(model, mapping={
-        torch.nn.ReLU: ClipperReLU
+        torch.nn.ReLU: ClipperReLU if CONFIG['protection'] == 'clipper' else RangerReLU
     }, in_place=True)
     bounds = []
     if CONFIG['model'] == 'resnet50':
@@ -39,7 +39,7 @@ if CONFIG['protection'] == 'clipper':
 
     relu_counter = 0
     for j, m in enumerate(model.modules()):
-        if isinstance(m, ClipperReLU):
+        if isinstance(m, torch.nn.ReLU):
             m.bounds = bounds[relu_counter]
             m.module_index = relu_counter
             relu_counter += 1
@@ -142,7 +142,10 @@ else:
 tensor_index = np.unravel_index(index, parameters[layer].shape)
 print(layer, tensor_index)
 with torch.no_grad():
-    parameters[layer][tensor_index] = bitflip(parameters[layer][tensor_index], CONFIG['bit_position'])
+    if CONFIG['protection'] == 'radar':
+        parameters[layer][tensor_index] = 0
+    else:
+        parameters[layer][tensor_index] = bitflip(parameters[layer][tensor_index], CONFIG['bit_position'])
 
 evaluation = []
 

@@ -6,7 +6,7 @@ DOMAIN = {
     'model': ('resnet50', 'FashionMNISTTutorial', 'FashionMNISTTutorial_smooth'),
     'rank': tuple(range(4000)),
     'bit_position': tuple(range(23, 32)),
-    'protection': ('none', 'clipper'),
+    'protection': ('none', 'clipper', 'ranger', 'radar'),
     'ranking': ('gradient', 'random', 'gradient_protected_20'),
     'sampler': ('none', 'critical'),
 }
@@ -15,7 +15,7 @@ CONSTRAINTS = (
     lambda c: c['model'] == 'resnet50',
     lambda c: c['ranking'] == 'random',
     lambda c: c['sampler'] == 'critical',
-    lambda c: c['protection'] == 'clipper',
+    lambda c: c['protection'] in ('radar', 'ranger'),
 )
 
 DEFAULTS = {
