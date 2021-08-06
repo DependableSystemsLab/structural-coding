@@ -95,12 +95,15 @@ def draw_heuristics():
         grad = float(all_grads[layer].flatten()[flatten_index])
         param = float(parameters[layer].flatten()[flatten_index])
         critical = 0
-        if sum(s) / len(s) >= 0.05:
+        if sum(s) / len(s) >= 0.01 and layer != 159:
             critical = 1
         # ranks.append((r, grad, critical))
+        ranks.append((r, abs(grad), critical))
         # ranks.append((r, 1 / abs(grad), critical))
         # ranks.append((r, param, critical))
-        ranks.append((r, 1 / max(1e-20, abs(grad)) * param, critical))
+        # ranks.append((r, 1 / max(1e-20, abs(grad)) * param, critical))
+        # ranks.append((r, 1 / max(1e-20, abs(param)) * abs(grad), critical))
+        # ranks.append((r, layer, critical))
         # ranks.append((r, -abs(param), critical))
     y_rand = []
     y_grad = []
@@ -113,8 +116,16 @@ def draw_heuristics():
     for r, _, critical in sorted_params:
         y += critical
         y_grad.append(y)
-    plt.plot(range(len(y_rand)), y_rand, label='rand')
-    plt.plot(range(len(y_grad)), y_grad, label='grad')
+    plt.plot(range(len(y_rand)), y_rand, label='random : found')
+    plt.plot(range(len(y_grad)), y_grad, label='value / |gradient| : found')
+
+    # plt.plot(range(len(y_rand)), [y / (i + 1) for i, y in enumerate(y_rand)], label='random : precision')
+    # plt.plot(range(len(y_rand)), [y / max(y_rand) for i, y in enumerate(y_rand)], label='random : recall')
+    # plt.plot(range(len(y_grad)), [y / (i + 1) for i, y in enumerate(y_grad)], label='value / |gradient| : precision')
+    # plt.plot(range(len(y_grad)), [y / max(y_grad) for i, y in enumerate(y_grad)], label='value / |gradient| : recall')
+    plt.title('Precision / Recall')
+    plt.ylabel('Critical Parameters Found')
+    plt.xlabel('Parameter Trials')
     plt.legend()
     plt.show()
 
