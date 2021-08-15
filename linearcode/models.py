@@ -10,7 +10,7 @@ from torch.utils.data import DataLoader
 from torchvision.models.resnet import Bottleneck, _resnet
 
 import injection
-from complement.parameters import CONFIG
+from linearcode.parameters import CONFIG
 from datasets import get_fashion_mnist
 from injection import convert
 

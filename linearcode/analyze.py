@@ -5,8 +5,8 @@ import matplotlib.pyplot as plt
 import torch
 
 from analysis import sdc, merge
-from complement.models import get_model
-from complement.parameters import SLURM_ARRAY, DEFAULTS
+from linearcode.models import get_model
+from linearcode.parameters import SLURM_ARRAY, DEFAULTS
 from storage import load, load_pickle
 
 
