@@ -66,9 +66,11 @@ class ClipperReLU(torch.nn.ReLU):
                 )
         forward = torch.nan_to_num(forward, self.bounds[1] + 1, self.bounds[1] + 1, self.bounds[0] - 1)
 
-        self.detection = torch.any(torch.any(torch.logical_or(forward > self.bounds[1], forward < self.bounds[0]), 1), 1)
+        self.detection = torch.any(torch.any(torch.logical_or(forward > self.bounds[1], forward < self.bounds[0]), -1), -1)
         if not self.detection.any():
             self.detection = None
+        else:
+            self.detection = torch.nonzero(self.detection)
         result = torch.clip(forward, *self.bounds)
         result *= result != self.bounds[1]
         return result
