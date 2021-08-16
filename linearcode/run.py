@@ -112,12 +112,12 @@ else:
 
     rands = {}
     for flips in DOMAIN['flips']:
-        abs_indices = set()
         rands[flips] = []
         for _ in DOMAIN['injection']:
             layer = next(iter(random.choices(range(len(sizes)), sizes, k=1)))
+            abs_indices = set()
             while len(abs_indices) < flips:
-                abs_indices.add(random.randint(0, sizes[layer] * 32))
+                abs_indices.add(random.randrange(0, sizes[layer] * 32))
             rands[flips].append([layer, list(abs_indices)])
 
     grads.sort(reverse=True)
