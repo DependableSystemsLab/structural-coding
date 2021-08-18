@@ -11,9 +11,11 @@
 \addvspace {10\p@ }
 \addvspace {10\p@ }
 \addvspace {10\p@ }
+\contentsline {figure}{\numberline {5.1}{\ignorespaces Performance of heuristics in comparison to random parameter selection. Including injections to all layers.}}{5}{figure.5.1}%
+\contentsline {figure}{\numberline {5.2}{\ignorespaces Performance of heuristics in comparison to random parameter selection. Excluding the injections to the last layer.}}{6}{figure.5.2}%
 \addvspace {10\p@ }
 \addvspace {10\p@ }
-\contentsline {figure}{\numberline {7.1}{\ignorespaces Happy Face: figure example.}}{10}{figure.7.1}%
+\contentsline {figure}{\numberline {7.1}{\ignorespaces Happy Face: figure example.}}{12}{figure.7.1}%
 \addvspace {10\p@ }
 \addvspace {10\p@ }
 \addvspace {10\p@ }

@@ -30,6 +30,7 @@ def load_pickle(filename):
         with open(filename + '.pkl', mode='rb') as f:
             return pickle.load(f)
     except OSError:
+        print("Error reading", filename)
         return None
 
 

@@ -397,14 +397,39 @@ numbered pages will begin.
 \chapter{Protecting Quantized CNNs against Rowhammer through Adversarial Training}
 \chapter{Measuring Fault Resilience of CNNs against Weight Faults}
 \chapter{Some Parameters are more Equal}
+
 \begin{abstract}
-On the one hand, deep neural networks (DNNs) have found their way through critical applications such as medical diagnosis and autonomous vehicles, where safety and security are required.  On the other hand, they benefit from their numerous parameters stored in memory systems which are prone to hardware related security and safety issues. In this work, we show that the recent generation of Rowhammer attacks can be leveraged to undermine accuracy of DNNs. Furthermore, we investigate both attack and defense as a search problem where the objective is to retrieve the most influential parameters out of the huge number of model parameters. 
+There are a variety of studies confirming that some parameters of deep neural networks (DNNs) play a more important role in the process of inference. These studies include but are not limited to DNN compression through weight pruning, saliency analysis of network parameters, and ranking most influential parameters for performing weight perturbation attacks. Yet, the criticality of parameters in sense of being vulnerable to bit flips is not investigated. In this chapter we analyze the case of ResNet50 image classifier with and without range restriction protection applied. 
 \end{abstract}
 
-\section{Introduction}
-\subsection{Related Work}
+\section{Experimental Setup}
+In this experiment we used ResNet50 as an image classifier. We used observed ranges from 20\% of training data set for clipper protection. First we sampled 1000 out of ImageNet validation images and then selected the 80 images causing most of the SDCs overall. 
+
+To report the retrieval measures (i.e. precision and recall) we reduce the search space to 4000 randomly selected parameters uniformly across all the network. Further we report values for a technique which is capable of protecting 10\% of the parameters (i.e. 400 parameters). The reported values in the result graphs are for selection of these 400 parameters out of 4000 assisted with some injection trials. Each technique starts with protecting the 400 top ranking parameters suggested by the heuristic or the random order. 
+
+To calculate the heuristics the gradient value is calculated regarding the cross entropy loss with regard to the 80 images. In the graphs $|value|$ means the value of the parameter and $grad$ the gradient calculated for that parameter. 
 
 
+\section{Results}
+
+Whereas ranking the parameters by the heuristic $value/|grad|$ seems promising both with and without applying clipper as a protection technique as demonstrated in Figure \ref{heuristic_layers:all}, it turns out to be a proxy to identify the parameters which are in the last layer. If we plot the same measures excluding the injections to the parameters of the last layer as demonstrated in Figure \ref{heuristic_layers:wolast}, we will see that $|grad|$ will be a better heuristic after applying clipper protection. Nevertheless, $value/|grad|$ remains dominant if we don't protect the network. 
+
+\begin{figure}[ht]
+  \begin{center}
+    \includegraphics[width=\columnwidth]{images/heuristic_protection:clipper_layers:all}
+    \includegraphics[width=\columnwidth]{images/heuristic_protection:none_layers:all}
+    \caption{\label{heuristic_layers:all}Performance of heuristics in comparison to random parameter selection. Including injections to all layers.}
+  \end{center}
+\end{figure}
+
+\begin{figure}[ht]
+  \begin{center}
+
+    \includegraphics[width=\columnwidth]{images/heuristic_protection:clipper_layers:wolast}
+   \includegraphics[width=\columnwidth]{images/heuristic_protection:none_layers:wolast}
+    \caption{\label{heuristic_layers:wolast}Performance of heuristics in comparison to random parameter selection. Excluding the injections to the last layer.}
+  \end{center}
+\end{figure}
 % Chapters are the next main unit.
 \chapter{This is a Chapter}
 

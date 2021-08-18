@@ -12,8 +12,6 @@ from storage import load, load_pickle
 
 def draw_sdc():
     baselines = {}
-    _, baselines['FashionMNISTTutorial'] = load_pickle('nonrecurring_FashionMNISTTutorial')[:2]
-    _, baselines['FashionMNISTTutorial_smooth'] = load_pickle('nonrecurring_FashionMNISTTutorial_smooth')[:2]
     _, baselines['resnet50'], rands = load_pickle('nonrecurring_resnet50')[:3]
     sdcs = defaultdict(list)
 
@@ -32,9 +30,13 @@ def draw_sdc():
     missing = False
     percent = len(SLURM_ARRAY) // 100
     for i, config in enumerate(SLURM_ARRAY):
-        layer = bisect.bisect_left(sizes, rands[config['rank']]) - 1
-        if layer == 159:
-            continue
+        layer, _ = rands[config['flips']][config['injection']]
+        # if layer == 159:
+        #     continue
+        # ('none',)
+        # 0.15676944520741992
+        # ('clipper',)
+        # 0.005379470284075879
         faulty = load(config, defaults=DEFAULTS)
         if faulty is None:
             print("{} in parameters array is missing.".format(i))
@@ -265,5 +267,5 @@ def draw_precision():
     plt.legend()
     plt.show()
 
-draw_precision()
 
+draw_sdc()
