@@ -4,7 +4,7 @@ from collections import defaultdict
 import matplotlib.pyplot as plt
 import torch
 
-from analysis import sdc, merge
+from analysis import sdc, merge, detection
 from linearcode.models import get_model
 from linearcode.parameters import SLURM_ARRAY, DEFAULTS
 from storage import load, load_pickle
@@ -26,7 +26,7 @@ def draw_sdc():
     for i in range(1, len(sizes), 1):
         sizes[i] += sizes[i - 1]
 
-    key = lambda c: (c['protection'], )
+    key = lambda c: (c['protection'], c['flips'])
     missing = False
     percent = len(SLURM_ARRAY) // 100
     for i, config in enumerate(SLURM_ARRAY):
@@ -42,17 +42,18 @@ def draw_sdc():
             print("{} in parameters array is missing.".format(i))
             missing = True
         else:
-            sdcs[key(config)].append(sdc(baselines[config['model']], faulty))
+            sdcs[key(config)].extend(faulty)
         if i % percent == 0:
             print(i // percent, '%')
     if missing:
         return
     for i in sdcs:
-        print(i, sum(j for j, _ in sdcs[i]) / len(sdcs[i]))
+        print(i,
+              detection(baselines['resnet50'], sdcs[i], 'sdc'),
+              detection(baselines['resnet50'], sdcs[i], 'due'))
 
 
 def draw_image_dependence():
-
     _, baseline, _ = load_pickle('nonrecurring')
     baseline_top1, labels = merge(baseline)
     per_image_sdc = torch.zeros(baseline_top1.shape, device=baseline_top1.device)
@@ -113,7 +114,7 @@ def draw_heuristics():
         param = float(parameters[layer].flatten()[flatten_index])
         critical = 0
         if sum(s) / len(s) >= 0.01 and layer != 159:
-        # if sum(s) / len(s) >= 0.01:
+            # if sum(s) / len(s) >= 0.01:
             critical = 1
         ranks['grad'].append((r, grad, critical))
         ranks['|grad|'].append((r, abs(grad), critical))
@@ -190,6 +191,7 @@ def draw_layers():
     plt.legend()
     plt.show()
 
+
 def draw_precision():
     _, baseline, rands, _, all_grads = load_pickle('nonrecurring_resnet50')
     model = get_model()
@@ -245,7 +247,8 @@ def draw_precision():
         y_rand.append(y)
     cut_off = 400
     y_rand = y_rand[:cut_off]
-    plt.plot(range(len(y_rand)), [y / (cut_off - (i + 1 - y)) for i, y in enumerate(y_rand)], label='random : precision')
+    plt.plot(range(len(y_rand)), [y / (cut_off - (i + 1 - y)) for i, y in enumerate(y_rand)],
+             label='random : precision')
     plt.plot(range(len(y_rand)), [y / max(y_rand) for i, y in enumerate(y_rand)], label='random : recall')
     for key in ranks:
         y = 0
@@ -268,4 +271,30 @@ def draw_precision():
     plt.show()
 
 
-draw_sdc()
+# draw_sdc()
+
+data = [(
+    ('clipper', 2), (0.00363141018897295, 0.000833659585670892), (0.0002596153935883194, 0.0002232800445650557)),
+    (('clipper', 4), (0.009038461372256279, 0.0013116462552972459), (0.0004839743487536907, 0.00030482257613978004)),
+    (('clipper', 8), (0.011048076674342155, 0.001448678468120462), (0.0010801282478496432, 0.0004552438208953905)),
+    (('clipper', 16), (0.019903846085071564, 0.0019357261879632873), (0.002294871723279357, 0.000663164675666337)),
+    (('clipper', 32), (0.03829166665673256, 0.00265959128481501), (0.00557692302390933, 0.0010321053020137427),)]
+
+sdcs = []
+sdcerrs = []
+dues = []
+dueerrs = []
+
+for (_, flips), (sdc, sdcerr), (due, dueerr) in data:
+    sdcs.append(sdc)
+    sdcerrs.append(sdcerr)
+    dues.append(due)
+    dueerrs.append(dueerr)
+
+flips = (2, 4, 8, 16, 32)
+plt.errorbar(flips, sdcs, yerr=sdcerrs, label='sdc')
+plt.errorbar(flips, dues, yerr=dueerrs, label='due')
+plt.legend()
+plt.title('DUE vs SDC')
+plt.xlabel('# of bit flips')
+plt.show()

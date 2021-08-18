@@ -9,22 +9,22 @@
 \contentsline {chapter}{\numberline {1}{Background and Terminology}}{1}{chapter.1}%
 \contentsline {chapter}{\numberline {2}{Protecting Quantized CNNs against Rowhammer through Adversarial Training}}{2}{chapter.2}%
 \contentsline {chapter}{\numberline {3}{Measuring Fault Resilience of CNNs against Weight Faults}}{3}{chapter.3}%
-\contentsline {chapter}{\numberline {4}{Some Parameters are more Equal}}{2}{chapter.4}%
-\contentsline {chapter}{\numberline {5}{Abstract}}{3}{chapter.5}%
-\contentsline {section}{\numberline {5.1}{Experimental Setup}}{4}{section.5.1}%
-\contentsline {section}{\numberline {5.2}{Results}}{4}{section.5.2}%
-\contentsline {chapter}{\numberline {6}{This is a Chapter}}{7}{chapter.6}%
-\contentsline {section}{\numberline {6.1}{A Section}}{7}{section.6.1}%
-\contentsline {subsection}{\numberline {6.1.1}{This is a Subsection}}{7}{subsection.6.1.1}%
-\contentsline {subsubsection}{{This is a Subsubsection}}{7}{section*.10}%
-\contentsline {paragraph}{{This is a Paragraph}}{7}{section*.11}%
-\contentsline {subparagraph}{{This is a Subparagraph}}{7}{section*.12}%
-\contentsline {section}{\numberline {6.2}{Quote}}{9}{section.6.2}%
-\contentsline {section}{\numberline {6.3}{Programs}}{9}{section.6.3}%
-\contentsline {chapter}{\numberline {7}{Another Chapter\dots }}{11}{chapter.7}%
-\contentsline {section}{\numberline {7.1}{Another Section}}{11}{section.7.1}%
-\contentsline {section}{\numberline {7.2}{Tables}}{13}{section.7.2}%
-\contentsline {chapter}{\numberline {8}{Landscape Mode}}{16}{chapter.8}%
+\contentsline {chapter}{\numberline {4}{Some Parameters are more Equal}}{4}{chapter.4}%
+\contentsline {section}{\numberline {4.1}{Introduction}}{4}{section.4.1}%
+\contentsline {section}{\numberline {4.2}{Experimental Setup}}{4}{section.4.2}%
+\contentsline {section}{\numberline {4.3}{Results}}{5}{section.4.3}%
+\contentsline {chapter}{\numberline {5}{This is a Chapter}}{8}{chapter.5}%
+\contentsline {section}{\numberline {5.1}{A Section}}{8}{section.5.1}%
+\contentsline {subsection}{\numberline {5.1.1}{This is a Subsection}}{8}{subsection.5.1.1}%
+\contentsline {subsubsection}{{This is a Subsubsection}}{8}{section*.10}%
+\contentsline {paragraph}{{This is a Paragraph}}{8}{section*.11}%
+\contentsline {subparagraph}{{This is a Subparagraph}}{8}{section*.12}%
+\contentsline {section}{\numberline {5.2}{Quote}}{10}{section.5.2}%
+\contentsline {section}{\numberline {5.3}{Programs}}{10}{section.5.3}%
+\contentsline {chapter}{\numberline {6}{Another Chapter\dots }}{12}{chapter.6}%
+\contentsline {section}{\numberline {6.1}{Another Section}}{12}{section.6.1}%
+\contentsline {section}{\numberline {6.2}{Tables}}{14}{section.6.2}%
+\contentsline {chapter}{\numberline {7}{Landscape Mode}}{17}{chapter.7}%
 \contentsline {part}{{Appendices}}{}{}
-\contentsline {chapter}{\numberline {A}{First Appendix}}{18}{appendix.A}%
-\contentsline {chapter}{\numberline {B}{Second Appendix}}{19}{appendix.B}%
+\contentsline {chapter}{\numberline {A}{First Appendix}}{19}{appendix.A}%
+\contentsline {chapter}{\numberline {B}{Second Appendix}}{20}{appendix.B}%

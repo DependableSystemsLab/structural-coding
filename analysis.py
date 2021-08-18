@@ -1,4 +1,6 @@
 import math
+import operator
+from functools import reduce
 
 import torch
 
@@ -25,6 +27,46 @@ def sdc(baseline, target):
     z = 1.96  # 95% confidence interval
     error = z * math.sqrt(sdc * (1 - sdc) / n)
     return float(sdc), error
+
+
+def detection(baseline, target, term='sdc'):
+    baseline_top1, label = merge(baseline)
+    target_top1 = None
+    detection = None
+    for e in target:
+        top1 = e['top5'].T[0]
+        detected_channels = None
+        for d in e['detection']:
+            if d is not None:
+                detected_channels = d
+                break
+        evaluation_detection = torch.zeros(top1.shape, device=top1.device)
+        if detected_channels is not None:
+            for channel in detected_channels:
+                evaluation_detection[channel[0]] += 1
+        if target_top1 is None:
+            target_top1 = top1
+            detection = evaluation_detection
+        else:
+            target_top1 = torch.cat((target_top1, top1), dim=0)
+            detection = torch.cat((detection, evaluation_detection), dim=0)
+    unit_baseline_top1 = baseline_top1
+    unit_label = label
+    while len(baseline_top1) < len(target_top1):
+        baseline_top1 = torch.cat((baseline_top1, unit_baseline_top1), dim=0)
+        label = torch.cat((label, unit_label), dim=0)
+
+    n = len(target)
+    correct = label == target_top1
+    base_correct = label == baseline_top1
+    corrupted = torch.logical_and(torch.logical_not(correct), base_correct)
+    detected_uncorrected = torch.logical_and(detection > 0, corrupted)
+    sdc = torch.sum(corrupted) / torch.sum(base_correct)
+    due = torch.sum(detected_uncorrected) / torch.sum(base_correct)
+    term = eval(term)
+    z = 1.96  # 95% confidence interval
+    error = z * math.sqrt(term * (1 - term) / n)
+    return float(term), error
 
 
 def merge(baseline):

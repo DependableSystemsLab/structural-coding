@@ -5,6 +5,7 @@ from itertools import product
 DOMAIN = {
     'model': ('resnet50', ),
     'injection': range(4000),
+    # 'injection': range(400),
     'protection': ('none', 'clipper', ),
     'sampler': ('none', 'critical'),
     'flips': (2, 4, 8, 16, 32, )

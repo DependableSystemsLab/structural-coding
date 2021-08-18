@@ -398,9 +398,9 @@ numbered pages will begin.
 \chapter{Measuring Fault Resilience of CNNs against Weight Faults}
 \chapter{Some Parameters are more Equal}
 
-\begin{abstract}
+\section{Introduction}
 There are a variety of studies confirming that some parameters of deep neural networks (DNNs) play a more important role in the process of inference. These studies include but are not limited to DNN compression through weight pruning, saliency analysis of network parameters, and ranking most influential parameters for performing weight perturbation attacks. Yet, the criticality of parameters in sense of being vulnerable to bit flips in presence of range restriction techniques is not investigated. In this chapter we analyze the case of ResNet50 image classifier with and without range restriction protection applied. 
-\end{abstract}
+
 
 \section{Experimental Setup}
 In this experiment we used ResNet50 as an image classifier. We used observed ranges from 20\% of training data set for clipper protection. First we sampled 1000 out of ImageNet validation images and then selected the 80 images causing most of the SDCs overall. 
