@@ -6,13 +6,14 @@ DOMAIN = {
     'model': ('resnet50', ),
     'injection': range(4000),
     # 'injection': range(400),
-    'protection': ('none', 'clipper', ),
+    'protection': ('none', 'clipper', 'sc'),
     'sampler': ('none', 'critical'),
     'flips': (2, 4, 8, 16, 32, )
 }
 
 CONSTRAINTS = (
     lambda c: c['sampler'] == 'critical',
+    lambda c: c['protection'] == 'sc',
 )
 
 DEFAULTS = {
