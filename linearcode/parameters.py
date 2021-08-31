@@ -14,6 +14,7 @@ DOMAIN = {
 CONSTRAINTS = (
     lambda c: c['sampler'] == 'critical',
     lambda c: c['protection'] == 'sc',
+    lambda c: c['flips'] == 2,
 )
 
 DEFAULTS = {

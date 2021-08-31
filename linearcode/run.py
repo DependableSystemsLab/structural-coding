@@ -141,9 +141,11 @@ for index in absolute_indices:
             if isinstance(m, torch.nn.Conv2d):
                 if m.weight is parameters[layer]:
                     m.injected = True
-        parameters[layer][tensor_index] = bitflip(parameters[layer][tensor_index], bit_index)
-        # parameters[layer][tensor_index] = bitflip(parameters[layer][tensor_index], 30)
+        corrupted = bitflip(parameters[layer][tensor_index], bit_index)
+        print(parameters[layer][tensor_index], '->', corrupted, bit_index)
+        parameters[layer][tensor_index] = corrupted
         print(layer, tensor_index, parameters[layer][tensor_index], parameters[layer].shape)
+        # TODO remove this
         break
 
 evaluation = []

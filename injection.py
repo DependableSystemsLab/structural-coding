@@ -1,6 +1,7 @@
 from copy import deepcopy
 from struct import pack, unpack
 
+import numpy
 import torch.nn
 from torch import Tensor
 from torch.nn.common_types import _size_2_t
@@ -156,7 +157,7 @@ class StructuralCodedConv2d(torch.nn.Conv2d):
                  padding_mode: str = 'zeros'):
         super().__init__(in_channels, out_channels, kernel_size, stride, padding, dilation, groups, bias, padding_mode)
         self.key = 1
-        self.step = 1
+        self.step = 1000
         self.r = 2
         self.injected = False
 
@@ -178,7 +179,6 @@ class StructuralCodedConv2d(torch.nn.Conv2d):
 
     @staticmethod
     def checksum(code, r, key, step, dim, holdout):
-        assert step == 1
         channel_dimension = len(code.shape) - len(dim) - 1
         channels_count = code.shape[channel_dimension]
 
@@ -187,8 +187,8 @@ class StructuralCodedConv2d(torch.nn.Conv2d):
 
         original_channel_count = channels_count - r
 
-        first = torch.FloatTensor([i for i in range(key, key + original_channel_count)], device=code.device)
-        second = torch.FloatTensor([i for i in range(key + original_channel_count, key + 2 * original_channel_count)], device=code.device)
+        first = torch.FloatTensor([i for i in range(key, key + original_channel_count * step, step)], device=code.device)
+        second = torch.FloatTensor([i for i in range(key + original_channel_count * step, key + 2 * original_channel_count * step, step)], device=code.device)
         scale_factor = first[holdout] / second[holdout]
         checksum_weights = first - second * scale_factor
         checksum_values = code.__getitem__(channel_index(original_channel_count)) - scale_factor * code.__getitem__(channel_index(original_channel_count + 1))
@@ -214,8 +214,14 @@ class StructuralCodedConv2d(torch.nn.Conv2d):
         redundant_feature_maps = super().forward(input)
         decoded_feature_maps = redundant_feature_maps[:, :-self.r]
         # hmm = self.code(decoded_feature_maps, self.r, self.key, self.step, (2, 3))
-
+        image_index = 2
         if self.injected:
-            print(torch.sum(self.checksum(redundant_feature_maps, self.r, self.key, self.step, (2, 3), 411)))
-            print(torch.sum(self.checksum(redundant_feature_maps, self.r, self.key, self.step, (2, 3), 412)))
+            detectable = numpy.unravel_index(torch.argmax(torch.sum(redundant_feature_maps[image_index], (0, ))), redundant_feature_maps[image_index].shape[1:])
+            # to_checksum = redundant_feature_maps[image_index].__getitem__((slice(None), ) + detectable)
+            to_checksum = redundant_feature_maps[image_index]
+            print(torch.sum(self.checksum(to_checksum, self.r, self.key, self.step, (2, 3), 405)))
+            print(torch.sum(self.checksum(to_checksum, self.r, self.key, self.step, (2, 3), 404)))
+            print(torch.sum(self.checksum(to_checksum, self.r, self.key, self.step, (2, 3), 403)))
+            # print(torch.sum(self.checksum(redundant_feature_maps, self.r, self.key, self.step, (2, 3), 411)))
+            # print(torch.sum(self.checksum(redundant_feature_maps, self.r, self.key, self.step, (2, 3), 412)))
         return decoded_feature_maps
