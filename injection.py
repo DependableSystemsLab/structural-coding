@@ -1,4 +1,6 @@
+import operator
 from copy import deepcopy
+from functools import reduce
 from struct import pack, unpack
 
 import numpy
@@ -157,8 +159,8 @@ class StructuralCodedConv2d(torch.nn.Conv2d):
                  padding_mode: str = 'zeros'):
         super().__init__(in_channels, out_channels, kernel_size, stride, padding, dilation, groups, bias, padding_mode)
         self.key = 1
-        self.step = 1000
-        self.r = 2
+        self.step = 1
+        self.r = 16
         self.injected = False
 
     @staticmethod
@@ -170,7 +172,10 @@ class StructuralCodedConv2d(torch.nn.Conv2d):
             redundant_kernel = torch.zeros([d for i, d in enumerate(weight.shape) if i != channel_dimension],
                                            device=weight.device)
             for c in range(weight.shape[channel_dimension]):
-                kernel = weight.__getitem__([c if i == channel_dimension else slice(None, None, None) for i in range(len(weight.shape))])
+                ind = [c if i == channel_dimension else slice(None, None, None) for i in range(len(weight.shape))]
+                if len(ind) == 1:
+                    ind = ind[0]
+                kernel = weight.__getitem__(ind)
                 redundant_kernel += counter * kernel
                 counter += step
             redundant_kernels.append(redundant_kernel)
@@ -187,8 +192,8 @@ class StructuralCodedConv2d(torch.nn.Conv2d):
 
         original_channel_count = channels_count - r
 
-        first = torch.FloatTensor([i for i in range(key, key + original_channel_count * step, step)], device=code.device)
-        second = torch.FloatTensor([i for i in range(key + original_channel_count * step, key + 2 * original_channel_count * step, step)], device=code.device)
+        first = torch.FloatTensor([key + i * step for i in range(original_channel_count)], device=code.device)
+        second = torch.FloatTensor([key + i * step for i in range(original_channel_count, 2 * original_channel_count)], device=code.device)
         scale_factor = first[holdout] / second[holdout]
         checksum_weights = first - second * scale_factor
         checksum_values = code.__getitem__(channel_index(original_channel_count)) - scale_factor * code.__getitem__(channel_index(original_channel_count + 1))
@@ -207,21 +212,83 @@ class StructuralCodedConv2d(torch.nn.Conv2d):
                        original.padding_mode)
         coded_weights = cls.code(original.weight, instance.r, instance.key, instance.step, (1, 2, 3))
         instance.weight = torch.nn.Parameter(coded_weights)
-        instance.bias = original.bias
+        if original.bias is not None:
+            coded_bias = cls.code(original.bias, instance.r, instance.key, instance.step, ())
+            instance.bias = torch.nn.Parameter(coded_bias)
         return instance
 
     def forward(self, input: Tensor) -> Tensor:
         redundant_feature_maps = super().forward(input)
         decoded_feature_maps = redundant_feature_maps[:, :-self.r]
-        # hmm = self.code(decoded_feature_maps, self.r, self.key, self.step, (2, 3))
+        hmm = self.code(decoded_feature_maps, self.r, self.key, self.step, (2, 3))
+        checksums = torch.sum((hmm - redundant_feature_maps), (1, ))
+
+        print(torch.sum(checksums), self.injected)
         image_index = 2
         if self.injected:
-            detectable = numpy.unravel_index(torch.argmax(torch.sum(redundant_feature_maps[image_index], (0, ))), redundant_feature_maps[image_index].shape[1:])
+            pass
+
+            # detectable = numpy.unravel_index(torch.argmax(torch.sum(redundant_feature_maps[image_index], (0, ))), redundant_feature_maps[image_index].shape[1:])
+            # print(detectable)
             # to_checksum = redundant_feature_maps[image_index].__getitem__((slice(None), ) + detectable)
-            to_checksum = redundant_feature_maps[image_index]
-            print(torch.sum(self.checksum(to_checksum, self.r, self.key, self.step, (2, 3), 405)))
-            print(torch.sum(self.checksum(to_checksum, self.r, self.key, self.step, (2, 3), 404)))
-            print(torch.sum(self.checksum(to_checksum, self.r, self.key, self.step, (2, 3), 403)))
+            # to_checksum = redundant_feature_maps[image_index]
+            # print(torch.sum(self.checksum(to_checksum, self.r, self.key, self.step, (2, 3), 369)))
+            # print(torch.sum(self.checksum(to_checksum, self.r, self.key, self.step, (2, 3), 370)))
+            # print(torch.sum(self.checksum(to_checksum, self.r, self.key, self.step, (2, 3), 371)))
             # print(torch.sum(self.checksum(redundant_feature_maps, self.r, self.key, self.step, (2, 3), 411)))
             # print(torch.sum(self.checksum(redundant_feature_maps, self.r, self.key, self.step, (2, 3), 412)))
         return decoded_feature_maps
+
+
+class ReorderingCodedConv2d(torch.nn.Conv2d):
+
+    def __init__(self, in_channels: int, out_channels: int, kernel_size: _size_2_t, stride: _size_2_t = 1,
+                 padding: _size_2_t = 0, dilation: _size_2_t = 1, groups: int = 1, bias: bool = True,
+                 padding_mode: str = 'zeros'):
+        super().__init__(in_channels, out_channels, kernel_size, stride, padding, dilation, groups, bias, padding_mode)
+        self.observe = False
+        self.standard_direction = None
+        self.standard_order = None
+
+    @classmethod
+    def from_original(cls, original: torch.nn.Conv2d):
+        instance = cls(original.in_channels, original.out_channels, original.kernel_size, original.stride,
+                       original.padding, original.dilation, original.groups, original.bias is not None,
+                       original.padding_mode)
+        instance.weight = original.weight
+        instance.bias = original.bias
+        instance.standard_direction = torch.ones((1,) + instance.weight.shape[1:])
+        instance.standard_order = instance.get_channel_order(instance.weight, instance.standard_direction)
+        return instance
+
+    def get_channel_order(self, tensor: Tensor, direction: Tensor, start_dim=1, threshold=1e-3):
+        product = torch.sum(tensor * direction, dim=tuple(range(start_dim, len(tensor.shape))))
+        # product = product * (abs(product) > threshold)
+        return torch.sort(product).indices
+
+    def forward(self, input: Tensor) -> Tensor:
+        result = super().forward(input)
+        if self.observe:
+            # n = reduce(operator.mul, self.weight.shape[1:])
+            # identity = torch.zeros((n, ) + self.weight.shape[1:])
+            # for i in range(n):
+            #     identity[i].view(n)[i] = 1
+            # transformation = self._conv_forward(input, identity, self.bias).view(n, -1)
+            # m = transformation.shape[1]
+            # standard_direction = torch.ones((1, ) + self.weight.shape[1:]).view(n)
+            # test_weight = self.weight[:1, :, :, :]
+            # reference = self._conv_forward(input, test_weight, self.bias).view(m)
+            # new = torch.matmul(test_weight.view(n), transformation)
+            # inverse = torch.pinverse(transformation)
+            # transformed_direction = torch.matmul(inverse, standard_direction)
+            current_order = self.get_channel_order(self.weight, self.standard_direction)
+            if torch.sum(current_order == self.standard_order) != len(self.standard_order):
+                for i, value in enumerate(self.standard_order):
+                    violated_channel = current_order[i]
+                    if value != violated_channel:
+                        print(i, violated_channel, "considered violated")
+                        self.observe = False
+                        # result[0][violated_channel] = (result[0][violated_channel - 1] + result[0][violated_channel + 1]) / 2
+                        result[0][violated_channel] *= 0
+                        break
+        return result

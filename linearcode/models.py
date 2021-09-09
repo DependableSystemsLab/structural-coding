@@ -108,6 +108,8 @@ class MyBottleneck(Bottleneck):
 def get_model():
     if CONFIG['model'] == 'resnet50':
         model = _resnet('resnet50', MyBottleneck, [3, 4, 6, 3], True, True)
+    elif CONFIG['model'] == 'alexnet':
+        model = torchvision.models.alexnet(True)
     elif CONFIG['model'] == 'FashionMNISTTutorial':
         model = FashionMNISTTutorial(pretrained=True)
     elif CONFIG['model'] == 'FashionMNISTTutorial_smooth':

@@ -51,7 +51,7 @@ elif CONFIG['protection'] == 'sc':
     }, in_place=True)
 
 model.eval()
-if CONFIG['model'] == 'resnet50':
+if CONFIG['model'] in ('resnet50', 'alexnet'):
     if CONFIG['sampler'] == 'none':
         data_loader = get_image_net()
     elif CONFIG['sampler'] == 'critical':
@@ -63,7 +63,11 @@ if CONFIG['model'] == 'resnet50':
                                              948, 966, 998))
     else:
         assert False
-    one_time_stuff = 'nonrecurring_resnet50.pkl'
+    if CONFIG['model'] == 'resnet50':
+        one_time_stuff = 'nonrecurring_resnet50.pkl'
+    elif CONFIG['model'] == 'alexnet':
+        one_time_stuff = 'nonrecurring_alexnet.pkl'
+
 elif CONFIG['model'] == 'FashionMNISTTutorial':
     data_loader = get_fashion_mnist()
     one_time_stuff = 'nonrecurring_FashionMNISTTutorial.pkl'
@@ -135,6 +139,8 @@ print('flipping', layer, absolute_indices)
 for index in absolute_indices:
     parameter_index = index // 32
     bit_index = index % 32
+    # TODO remove this
+    bit_index = 21
     tensor_index = np.unravel_index(parameter_index, parameters[layer].shape)
     with torch.no_grad():
         for m in model.modules():
@@ -145,8 +151,6 @@ for index in absolute_indices:
         print(parameters[layer][tensor_index], '->', corrupted, bit_index)
         parameters[layer][tensor_index] = corrupted
         print(layer, tensor_index, parameters[layer][tensor_index], parameters[layer].shape)
-        # TODO remove this
-        break
 
 evaluation = []
 

@@ -3,18 +3,19 @@ from itertools import product
 
 
 DOMAIN = {
-    'model': ('resnet50', ),
+    'model': ('resnet50', 'alexnet'),
     'injection': range(4000),
     # 'injection': range(400),
-    'protection': ('none', 'clipper', 'sc'),
+    'protection': ('none', 'clipper', 'sc', ),
     'sampler': ('none', 'critical'),
-    'flips': (2, 4, 8, 16, 32, )
+    'flips': (1, 2, 4, 8, 16, 32, )
 }
 
 CONSTRAINTS = (
     lambda c: c['sampler'] == 'critical',
     lambda c: c['protection'] == 'sc',
-    lambda c: c['flips'] == 2,
+    lambda c: c['flips'] == 1,
+    lambda c: c['model'] == 'alexnet',
 )
 
 DEFAULTS = {
