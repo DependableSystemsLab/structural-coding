@@ -20,11 +20,12 @@ parameters = list(model.parameters())
 
 for j, (x, y) in enumerate(dataset):
     for i in range(64):
-        if (j, i) not in (
-                (2, 2),
-                (4, 4),
-        ):
-            continue
+        # if (j, i) not in (
+        #         (2, 9),
+        #         # (2, 2),
+        #         # (4, 4),
+        # ):
+        #     continue
         tensor_index = (i, 0, 1, 2)
         layer_index = 6
 
@@ -35,7 +36,7 @@ for j, (x, y) in enumerate(dataset):
                 if m.weight is parameter:
                     m.observe = True
                     target = m
-        parameter_value = parameter[tensor_index]
+        parameter_value = float(parameter[tensor_index])
         corrupted = bitflip(parameter_value, 25)
         print(parameter_value, '->', corrupted)
         with torch.no_grad():
@@ -46,7 +47,7 @@ for j, (x, y) in enumerate(dataset):
             print(faulty)
             if golden and not faulty:
                 print(">>>>>>>>>>>>>> BAD DATAPOINT ", j, i)
-            if golden != faulty and target.observe:
+            if golden != faulty and target.observe != i:
                 print(">>>>>>>>>>>>>> VERY BAD DETECTION")
             parameter[tensor_index] = parameter_value
 

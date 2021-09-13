@@ -8,6 +8,8 @@ import torch.nn
 from torch import Tensor
 from torch.nn.common_types import _size_2_t
 
+from utils import lcs
+
 
 def convert(module, mapping=None, in_place=False, injection_index=None):
     if injection_index is None:
@@ -282,13 +284,11 @@ class ReorderingCodedConv2d(torch.nn.Conv2d):
             # inverse = torch.pinverse(transformation)
             # transformed_direction = torch.matmul(inverse, standard_direction)
             current_order = self.get_channel_order(self.weight, self.standard_direction)
+            current = list(map(int, current_order))
+            standard = list(map(int, self.standard_order))
             if torch.sum(current_order == self.standard_order) != len(self.standard_order):
-                for i, value in enumerate(self.standard_order):
-                    violated_channel = current_order[i]
-                    if value != violated_channel:
-                        print(i, violated_channel, "considered violated")
-                        self.observe = False
-                        # result[0][violated_channel] = (result[0][violated_channel - 1] + result[0][violated_channel + 1]) / 2
-                        result[0][violated_channel] *= 0
-                        break
+                indices = lcs(standard, current)
+                erasure = list(map(lambda ind: current[ind], set(standard) - set(ind[1] for ind in indices)))
+                print(*erasure, 'violated')
+                self.observe = erasure[0]
         return result

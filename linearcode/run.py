@@ -10,7 +10,8 @@ from linearcode.models import get_model
 from linearcode.parameters import CONFIG, DEFAULTS
 from linearcode.settings import BATCH_SIZE
 from datasets import get_fashion_mnist, get_image_net
-from injection import convert, bitflip, ClipperReLU, top_percent, RangerReLU, StructuralCodedConv2d
+from injection import convert, bitflip, ClipperReLU, top_percent, RangerReLU, StructuralCodedConv2d, \
+    ReorderingCodedConv2d
 from linearcode.parameters import DOMAIN
 from storage import store
 
@@ -49,6 +50,12 @@ elif CONFIG['protection'] == 'sc':
     model, _ = convert(model, mapping={
         torch.nn.Conv2d: StructuralCodedConv2d
     }, in_place=True)
+elif CONFIG['protection'] == 'roc':
+    model, _ = convert(model, mapping={
+        torch.nn.Conv2d: ReorderingCodedConv2d
+    }, in_place=True)
+else:
+    assert False
 
 model.eval()
 if CONFIG['model'] in ('resnet50', 'alexnet'):
@@ -140,13 +147,14 @@ for index in absolute_indices:
     parameter_index = index // 32
     bit_index = index % 32
     # TODO remove this
-    bit_index = 21
+    bit_index = 31
     tensor_index = np.unravel_index(parameter_index, parameters[layer].shape)
     with torch.no_grad():
         for m in model.modules():
             if isinstance(m, torch.nn.Conv2d):
                 if m.weight is parameters[layer]:
                     m.injected = True
+                    m.observe = True
         corrupted = bitflip(parameters[layer][tensor_index], bit_index)
         print(parameters[layer][tensor_index], '->', corrupted, bit_index)
         parameters[layer][tensor_index] = corrupted
