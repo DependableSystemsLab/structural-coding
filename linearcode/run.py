@@ -11,7 +11,7 @@ from linearcode.parameters import CONFIG, DEFAULTS
 from linearcode.settings import BATCH_SIZE
 from datasets import get_fashion_mnist, get_image_net
 from injection import convert, bitflip, ClipperReLU, top_percent, RangerReLU, StructuralCodedConv2d, \
-    ReorderingCodedConv2d
+    ReorderingCodedConv2d, StructuralCodedLinear
 from linearcode.parameters import DOMAIN
 from storage import store
 
@@ -48,14 +48,15 @@ if CONFIG['protection'] in ('ranger', 'clipper'):
     print(relu_counter)
 elif CONFIG['protection'] == 'sc':
     model, _ = convert(model, mapping={
-        torch.nn.Conv2d: StructuralCodedConv2d
+        torch.nn.Conv2d: StructuralCodedConv2d,
+        torch.nn.Linear: StructuralCodedLinear,
     }, in_place=True)
 elif CONFIG['protection'] == 'roc':
     model, _ = convert(model, mapping={
         torch.nn.Conv2d: ReorderingCodedConv2d
     }, in_place=True)
 else:
-    assert False
+    assert CONFIG['protection'] == 'none'
 
 model.eval()
 if CONFIG['model'] in ('resnet50', 'alexnet'):
@@ -68,6 +69,13 @@ if CONFIG['model'] in ('resnet50', 'alexnet'):
                                              536, 538, 540, 563, 581, 621, 662, 673, 677, 690, 693, 701, 733, 767, 774,
                                              784, 789, 806, 808, 828, 851, 872, 877, 885, 907, 912, 915, 928, 929, 934,
                                              948, 966, 998))
+    elif CONFIG['sampler'] == 'tiny':
+        data_loader = get_image_net(sampler=(4, 10, 14, 16, 23, 27, 39, 51, 53, 64, 68, 109, 111, 120, 124, 131, 139,
+                                             143, 162, 215, 236, 242, 276, 284, 303, 332, 374, 384, 397, 405, 408, 413,
+                                             419, 420, 423, 424, 431, 432, 447, 448, 462, 466, 485, 502, 503, 511, 532,
+                                             536, 538, 540, 563, 581, 621, 662, 673, 677, 690, 693, 701, 733, 767, 774,
+                                             784, 789, 806, 808, 828, 851, 872, 877, 885, 907, 912, 915, 928, 929, 934,
+                                             948, 966, 998)[:BATCH_SIZE])
     else:
         assert False
     if CONFIG['model'] == 'resnet50':
@@ -146,12 +154,10 @@ print('flipping', layer, absolute_indices)
 for index in absolute_indices:
     parameter_index = index // 32
     bit_index = index % 32
-    # TODO remove this
-    bit_index = 31
     tensor_index = np.unravel_index(parameter_index, parameters[layer].shape)
     with torch.no_grad():
         for m in model.modules():
-            if isinstance(m, torch.nn.Conv2d):
+            if isinstance(m, torch.nn.Conv2d) or isinstance(m, torch.nn.Linear):
                 if m.weight is parameters[layer]:
                     m.injected = True
                     m.observe = True
@@ -165,15 +171,11 @@ evaluation = []
 with torch.no_grad():
     for i, (x, y) in enumerate(data_loader):
         model_output = model(x)
-        detection = []
-        for j, m in enumerate(model.modules()):
-            if isinstance(m, ClipperReLU):
-                detection.append(m.detection)
-        evaluation.append({'top5': torch.topk(model_output, k=k).indices,
+        indices = torch.topk(model_output, k=k).indices
+        evaluation.append({'top5': indices,
                            'label': y,
                            'batch': i,
-                           'batch_size': BATCH_SIZE,
-                           'detection': detection})
+                           'batch_size': BATCH_SIZE})
         print("Done with batch {} after injection".format(i))
 
     store(CONFIG, evaluation, DEFAULTS)
