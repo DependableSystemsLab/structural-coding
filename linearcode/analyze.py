@@ -10,21 +10,21 @@ from linearcode.parameters import SLURM_ARRAY, DEFAULTS
 from storage import load, load_pickle
 
 
-def draw_sdc():
+def draw_sdc(model_name='resnet50', partial=True):
     baselines = {}
-    _, baselines['resnet50'], rands = load_pickle('nonrecurring_resnet50')[:3]
+    _, baselines[model_name], rands = load_pickle('nonrecurring_{}'.format(model_name))[:3]
     sdcs = defaultdict(list)
 
-    model = get_model()
-    parameters = list(model.parameters())
-    sizes = [0]
-    for p in parameters:
-        s = 1
-        for d in p.shape:
-            s *= d
-        sizes.append(s)
-    for i in range(1, len(sizes), 1):
-        sizes[i] += sizes[i - 1]
+    # model = get_model()
+    # parameters = list(model.parameters())
+    # sizes = [0]
+    # for p in parameters:
+    #     s = 1
+    #     for d in p.shape:
+    #         s *= d
+    #     sizes.append(s)
+    # for i in range(1, len(sizes), 1):
+    #     sizes[i] += sizes[i - 1]
 
     key = lambda c: (c['protection'], c['flips'])
     missing = False
@@ -45,12 +45,10 @@ def draw_sdc():
             sdcs[key(config)].extend(faulty)
         if i % percent == 0:
             print(i // percent, '%')
-    if missing:
+    if not partial and missing:
         return
     for i in sdcs:
-        print(i,
-              detection(baselines['resnet50'], sdcs[i], 'sdc'),
-              detection(baselines['resnet50'], sdcs[i], 'due'))
+        print(i, sdc(baselines[model_name], sdcs[i]))
 
 
 def draw_image_dependence():
@@ -271,30 +269,30 @@ def draw_precision():
     plt.show()
 
 
-# draw_sdc()
+draw_sdc(partial=True)
 
-data = [(
-    ('clipper', 2), (0.00363141018897295, 0.000833659585670892), (0.0002596153935883194, 0.0002232800445650557)),
-    (('clipper', 4), (0.009038461372256279, 0.0013116462552972459), (0.0004839743487536907, 0.00030482257613978004)),
-    (('clipper', 8), (0.011048076674342155, 0.001448678468120462), (0.0010801282478496432, 0.0004552438208953905)),
-    (('clipper', 16), (0.019903846085071564, 0.0019357261879632873), (0.002294871723279357, 0.000663164675666337)),
-    (('clipper', 32), (0.03829166665673256, 0.00265959128481501), (0.00557692302390933, 0.0010321053020137427),)]
-
-sdcs = []
-sdcerrs = []
-dues = []
-dueerrs = []
-
-for (_, flips), (sdc, sdcerr), (due, dueerr) in data:
-    sdcs.append(sdc)
-    sdcerrs.append(sdcerr)
-    dues.append(due)
-    dueerrs.append(dueerr)
-
-flips = (2, 4, 8, 16, 32)
-plt.errorbar(flips, sdcs, yerr=sdcerrs, label='sdc')
-plt.errorbar(flips, dues, yerr=dueerrs, label='due')
-plt.legend()
-plt.title('DUE vs SDC')
-plt.xlabel('# of bit flips')
-plt.show()
+# data = [(
+#     ('clipper', 2), (0.00363141018897295, 0.000833659585670892), (0.0002596153935883194, 0.0002232800445650557)),
+#     (('clipper', 4), (0.009038461372256279, 0.0013116462552972459), (0.0004839743487536907, 0.00030482257613978004)),
+#     (('clipper', 8), (0.011048076674342155, 0.001448678468120462), (0.0010801282478496432, 0.0004552438208953905)),
+#     (('clipper', 16), (0.019903846085071564, 0.0019357261879632873), (0.002294871723279357, 0.000663164675666337)),
+#     (('clipper', 32), (0.03829166665673256, 0.00265959128481501), (0.00557692302390933, 0.0010321053020137427),)]
+#
+# sdcs = []
+# sdcerrs = []
+# dues = []
+# dueerrs = []
+#
+# for (_, flips), (sdc, sdcerr), (due, dueerr) in data:
+#     sdcs.append(sdc)
+#     sdcerrs.append(sdcerr)
+#     dues.append(due)
+#     dueerrs.append(dueerr)
+#
+# flips = (2, 4, 8, 16, 32)
+# plt.errorbar(flips, sdcs, yerr=sdcerrs, label='sdc')
+# plt.errorbar(flips, dues, yerr=dueerrs, label='due')
+# plt.legend()
+# plt.title('DUE vs SDC')
+# plt.xlabel('# of bit flips')
+# plt.show()
