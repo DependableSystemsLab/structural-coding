@@ -10,9 +10,10 @@ from linearcode.parameters import SLURM_ARRAY, DEFAULTS
 from storage import load, load_pickle
 
 
-def draw_sdc(model_name='resnet50', partial=True):
+def draw_sdc(partial=True):
     baselines = {}
-    _, baselines[model_name], rands = load_pickle('nonrecurring_{}'.format(model_name))[:3]
+    _, baselines['resnet50'], rands = load_pickle('nonrecurring_resnet50')[:3]
+    _, baselines['alexnet'], rands = load_pickle('nonrecurring_alexnet')[:3]
     sdcs = defaultdict(list)
 
     # model = get_model()
@@ -26,7 +27,7 @@ def draw_sdc(model_name='resnet50', partial=True):
     # for i in range(1, len(sizes), 1):
     #     sizes[i] += sizes[i - 1]
 
-    key = lambda c: (c['protection'], c['flips'])
+    key = lambda c: (c['model'], c['protection'], c['flips'])
     missing = False
     percent = len(SLURM_ARRAY) // 100
     for i, config in enumerate(SLURM_ARRAY):
@@ -45,10 +46,12 @@ def draw_sdc(model_name='resnet50', partial=True):
             sdcs[key(config)].extend(faulty)
         if i % percent == 0:
             print(i // percent, '%')
+            for i in sdcs:
+                print(i, sdc(baselines[i[0]], sdcs[i]))
     if not partial and missing:
         return
     for i in sdcs:
-        print(i, sdc(baselines[model_name], sdcs[i]))
+        print(i, sdc(baselines[i[0]], sdcs[i]))
 
 
 def draw_image_dependence():
