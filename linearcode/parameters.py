@@ -12,10 +12,9 @@ DOMAIN = {
 }
 
 CONSTRAINTS = (
-    lambda c: c['sampler'] == 'none',
+    lambda c: c['sampler'] == 'critical',
     lambda c: c['protection'] in ('sc', 'none', 'clipper'),
-    lambda c: c['flips'] <= 4,
-    lambda c: not (c['model'] == 'alexnet' and c['protection'] == 'clipper')
+    lambda c: c['model'] == 'resnet50',
 )
 #
 # CONSTRAINTS = (

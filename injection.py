@@ -5,10 +5,13 @@ import torch.nn
 from torch import Tensor
 from torch.nn.common_types import _size_2_t
 
+from sc import StructuralCode, ErasureCode
 from utils import lcs
 
 
-def convert(module, mapping=None, in_place=False, injection_index=None):
+def convert(module, mapping=None, in_place=False, injection_index=None, extra_kwargs=None):
+    if extra_kwargs is None:
+        extra_kwargs = {}
     if injection_index is None:
         injection_index = CounterReference()
     assert mapping is not None
@@ -18,10 +21,13 @@ def convert(module, mapping=None, in_place=False, injection_index=None):
     reassign = {}
     for name, mod in module.named_children():
         if list(mod.named_children()):
-            convert(mod, mapping, True, injection_index)
+            convert(mod, mapping, True, injection_index, extra_kwargs)
             continue
         if mod.__class__ in mapping:
-            reassign[name] = mapping[mod.__class__].from_original(mod)
+            if extra_kwargs:
+                reassign[name] = mapping[mod.__class__].from_original(mod, extra_kwargs)
+            else:
+                reassign[name] = mapping[mod.__class__].from_original(mod)
             if hasattr(reassign[name], 'weight'):
                 reassign[name].injection_index = injection_index.counter
                 weight_shape = reassign[name].weight.shape
@@ -155,152 +161,63 @@ class StructuralCodedConv2d(torch.nn.Conv2d):
 
     def __init__(self, in_channels: int, out_channels: int, kernel_size: _size_2_t, stride: _size_2_t = 1,
                  padding: _size_2_t = 0, dilation: _size_2_t = 1, groups: int = 1, bias: bool = True,
-                 padding_mode: str = 'zeros'):
+                 padding_mode: str = 'zeros', k=1, threshold=0.1, n=256):
         super().__init__(in_channels, out_channels, kernel_size, stride, padding, dilation, groups, bias, padding_mode)
-        self.key = 1
-        self.step = 1
-        self.r = 2
+        self.k = k
+        self.n = n
+        self.threshold = threshold
+        self.sc = StructuralCode(self.n, self.k, self.threshold)
+        self.ec = ErasureCode(self.k)
+        self.simple_checksum = None
+        self.simple_checksum_tensors = None
         self.injected = False
-
-    @staticmethod
-    def code(weight, r, key, step, dim):
-        counter = key
-        redundant_kernels = []
-        channel_dimension = len(weight.shape) - len(dim) - 1
-        for _ in range(r):
-            redundant_kernel = torch.zeros([d for i, d in enumerate(weight.shape) if i != channel_dimension],
-                                           device=weight.device)
-            for c in range(weight.shape[channel_dimension]):
-                ind = [c if i == channel_dimension else slice(None, None, None) for i in range(len(weight.shape))]
-                if len(ind) == 1:
-                    ind = ind[0]
-                kernel = weight.__getitem__(ind)
-                redundant_kernel += counter * kernel
-                counter += step
-            redundant_kernels.append(redundant_kernel)
-        coded_weight = torch.cat((weight, torch.stack(redundant_kernels, channel_dimension)), channel_dimension)
-        return coded_weight
-
-    @staticmethod
-    def checksum(code, r, key, step, dim, holdout):
-        channel_dimension = len(code.shape) - len(dim) - 1
-        channels_count = code.shape[channel_dimension]
-
-        def channel_index(c):
-            return [c if i == channel_dimension else slice(None, None, None) for i in range(len(code.shape))]
-
-        original_channel_count = channels_count - r
-
-        first = torch.FloatTensor([key + i * step for i in range(original_channel_count)], device=code.device)
-        second = torch.FloatTensor([key + i * step for i in range(original_channel_count, 2 * original_channel_count)], device=code.device)
-        scale_factor = first[holdout] / second[holdout]
-        checksum_weights = first - second * scale_factor
-        checksum_values = code.__getitem__(channel_index(original_channel_count)) - scale_factor * code.__getitem__(channel_index(original_channel_count + 1))
-        original_channels = code.__getitem__([
-            slice(None, original_channel_count) if i == channel_dimension else slice(None, None, None)
-            for i in range(len(code.shape))])
-        checksum_values -= torch.sum(checksum_weights * original_channels, (channel_dimension, ))
-
-        return checksum_values
+        self.layer = None
+        self.detected = False
 
     @classmethod
-    def from_original(cls, original: torch.nn.Conv2d):
+    def from_original(cls, original: torch.nn.Conv2d, extra_kwarg=None):
+        if extra_kwarg is None:
+            extra_kwarg = {}
         instance = cls(original.in_channels, original.out_channels, original.kernel_size, original.stride,
                        original.padding, original.dilation, original.groups, original.bias is not None,
-                       original.padding_mode)
-        coded_weights = cls.code(original.weight, instance.r, instance.key, instance.step, (1, 2, 3))
+                       original.padding_mode, **extra_kwarg)
+        coded_weights = instance.sc.code(original.weight)
         instance.weight = torch.nn.Parameter(coded_weights)
+        checksum_tensors = (instance.weight, )
         if original.bias is not None:
-            coded_bias = cls.code(original.bias, instance.r, instance.key, instance.step, ())
+            coded_bias = instance.sc.code(original.bias)
             instance.bias = torch.nn.Parameter(coded_bias)
+            checksum_tensors += (instance.bias, )
+        instance.simple_checksum_tensors = checksum_tensors
+        instance.simple_checksum = instance.ec.checksum(instance.simple_checksum_tensors)
         return instance
 
     def forward(self, input: Tensor) -> Tensor:
         redundant_feature_maps = super().forward(input)
-        decoded_feature_maps = redundant_feature_maps[:, :-self.r]
-        hmm = self.code(decoded_feature_maps, self.r, self.key, self.step, (2, 3))
-        calculated_redundant_fmaps = hmm[:, self.out_channels:, :, :]
-        weight_coded_redundant_fmaps = redundant_feature_maps[:, self.out_channels:, :, :]
-        checksum = torch.sum(
-            calculated_redundant_fmaps - weight_coded_redundant_fmaps
-        )
-        if abs(checksum) > 1000:
-            holdout_checksums = []
-            reduced = torch.sum(redundant_feature_maps, (2, 3))
-            for holdout in range(decoded_feature_maps.shape[1]):
-                holdout_checksum = torch.sum(self.checksum(reduced, self.r, self.key, self.step, (), holdout))
-                # holdout_checksum = torch.sum(self.checksum(redundant_feature_maps, self.r, self.key, self.step, (2, 3), holdout))
-                holdout_checksums.append(holdout_checksum)
-            for _r in range(self.r):
-                holdout_checksums.append(torch.sum(calculated_redundant_fmaps[:, _r, :, :] - weight_coded_redundant_fmaps[:, _r, :, :]))
-            corrupted = min(enumerate(holdout_checksums), key=lambda c: abs(c[1]))[0]
-            if corrupted < self.out_channels:
-                first = torch.FloatTensor([self.key + i * self.step for i in range(self.out_channels)],
-                                          device=decoded_feature_maps.device)
-                for c in range(self.out_channels):
-                    if c == corrupted:
-                        continue
-                    weight_coded_redundant_fmaps[:, 0, :, :] -= first[c] * decoded_feature_maps[:, c, :, :]
-                decoded_feature_maps[:, corrupted, :, :] = weight_coded_redundant_fmaps[:, 0, :, :] / first[corrupted]
-            # print('recon', corrupted)
-        return decoded_feature_maps
+        decoded = self.sc.decode(redundant_feature_maps, dim=1)
+        if decoded is not None:
+            return decoded
+        self.detected = True
+        erasure = self.ec.erasure(self.simple_checksum_tensors, self.simple_checksum)
+        return self.sc.decode(redundant_feature_maps, 1, erasure)
 
 
 class StructuralCodedLinear(torch.nn.Linear):
 
     maximum_channels = 128
 
-    def __init__(self, in_features: int, out_features: int, bias: bool = True) -> None:
+    def __init__(self, in_features: int, out_features: int, bias: bool = True, k=1, threshold=0.1, n=256) -> None:
         super().__init__(in_features, out_features, bias)
-        self.key = 1
-        self.step = 1
-        self.r = 2
-        self.group_size = out_features // self.maximum_channels
-        while out_features % self.group_size != 0:
-            self.group_size += 1
-        self.out_channels = out_features // self.group_size
         self.injected = False
-
-    @staticmethod
-    def code(weight, r, key, step, dim):
-        counter = key
-        redundant_kernels = []
-        channel_dimension = len(weight.shape) - len(dim) - 1
-        for _ in range(r):
-            redundant_kernel = torch.zeros([d for i, d in enumerate(weight.shape) if i != channel_dimension],
-                                           device=weight.device)
-            for c in range(weight.shape[channel_dimension]):
-                ind = [c if i == channel_dimension else slice(None, None, None) for i in range(len(weight.shape))]
-                if len(ind) == 1:
-                    ind = ind[0]
-                kernel = weight.__getitem__(ind)
-                redundant_kernel += counter * kernel
-                counter += step
-            redundant_kernels.append(redundant_kernel)
-        coded_weight = torch.cat((weight, torch.stack(redundant_kernels, channel_dimension)), channel_dimension)
-        return coded_weight
-
-    @staticmethod
-    def checksum(code, r, key, step, dim, holdout):
-        channel_dimension = len(code.shape) - len(dim) - 1
-        channels_count = code.shape[channel_dimension]
-
-        def channel_index(c):
-            return [c if i == channel_dimension else slice(None, None, None) for i in range(len(code.shape))]
-
-        original_channel_count = channels_count - r
-
-        first = torch.FloatTensor([key + i * step for i in range(original_channel_count)], device=code.device)
-        second = torch.FloatTensor([key + i * step for i in range(original_channel_count, 2 * original_channel_count)], device=code.device)
-        scale_factor = first[holdout] / second[holdout]
-        checksum_weights = first - second * scale_factor
-        checksum_values = code.__getitem__(channel_index(original_channel_count)) - scale_factor * code.__getitem__(channel_index(original_channel_count + 1))
-        original_channels = code.__getitem__([
-            slice(None, original_channel_count) if i == channel_dimension else slice(None, None, None)
-            for i in range(len(code.shape))])
-        checksum_values -= torch.sum(checksum_weights * original_channels, (channel_dimension, ))
-
-        return checksum_values
+        self.detected = False
+        self.layer = None
+        self.k = k
+        self.n = n
+        self.threshold = threshold
+        self.sc = StructuralCode(self.n, self.k, self.threshold)
+        self.ec = ErasureCode(self.k)
+        self.simple_checksum = None
+        self.simple_checksum_tensors = None
 
     @staticmethod
     def group(tensor: Tensor, size, dim=0):
@@ -311,45 +228,28 @@ class StructuralCodedLinear(torch.nn.Linear):
         return tensor.reshape(tensor.shape[:dim] + (tensor.shape[dim] * tensor.shape[dim + 1],) + tensor.shape[dim + 2:])
 
     @classmethod
-    def from_original(cls, original: torch.nn.Linear):
-        instance = cls(original.in_features, original.out_features, original.bias is not None)
-        coded_weights = cls.code(cls.group(original.weight, instance.group_size), instance.r, instance.key, instance.step, (1, 2, ))
-        instance.weight = torch.nn.Parameter(cls.ungroup(coded_weights))
+    def from_original(cls, original: torch.nn.Linear, extra_kwargs=None):
+        if extra_kwargs is None:
+            extra_kwargs = {}
+        instance = cls(original.in_features, original.out_features, original.bias is not None, **extra_kwargs)
+        coded_weights = instance.sc.code(original.weight)
+        instance.weight = torch.nn.Parameter(coded_weights)
+        instance.simple_checksum_tensors = (instance.weight, )
         if original.bias is not None:
-            coded_bias = cls.code(cls.group(original.bias, instance.group_size), instance.r, instance.key, instance.step, (1, ))
-            instance.bias = torch.nn.Parameter(cls.ungroup(coded_bias))
+            coded_bias = instance.sc.code(original.bias)
+            instance.bias = torch.nn.Parameter(coded_bias)
+            instance.simple_checksum_tensors += (instance.bias, )
+        instance.simple_checksum = instance.ec.checksum(instance.simple_checksum_tensors)
         return instance
 
     def forward(self, input: Tensor) -> Tensor:
-        redundant_feature_maps = self.group(super().forward(input), self.group_size, dim=1)
-        decoded_feature_maps = redundant_feature_maps[:, :-self.r]
-        hmm = self.code(decoded_feature_maps, self.r, self.key, self.step, (2, ))
-        calculated_redundant_fmaps = hmm[:, self.out_channels:]
-        weight_coded_redundant_fmaps = redundant_feature_maps[:, self.out_channels:]
-        checksum = torch.sum(
-            calculated_redundant_fmaps - weight_coded_redundant_fmaps
-        )
-        if abs(checksum) > 1000:
-            holdout_checksums = []
-            reduced = torch.sum(redundant_feature_maps, (2, ))
-            for holdout in range(decoded_feature_maps.shape[1]):
-                print(holdout)
-                holdout_checksum = torch.sum(self.checksum(reduced, self.r, self.key, self.step, (2,), holdout))
-                # holdout_checksum = torch.sum(self.checksum(redundant_feature_maps, self.r, self.key, self.step, (2, 3), holdout))
-                holdout_checksums.append(holdout_checksum)
-            for _r in range(self.r):
-                holdout_checksums.append(torch.sum(calculated_redundant_fmaps[:, _r] - weight_coded_redundant_fmaps[:, _r]))
-            corrupted = min(enumerate(holdout_checksums), key=lambda c: abs(c[1]))[0]
-            if corrupted < self.out_channels:
-                first = torch.FloatTensor([self.key + i * self.step for i in range(self.out_channels)],
-                                          device=decoded_feature_maps.device)
-                for c in range(self.out_channels):
-                    if c == corrupted:
-                        continue
-                    weight_coded_redundant_fmaps[:, 0] -= first[c] * decoded_feature_maps[:, c]
-                decoded_feature_maps[:, corrupted] = weight_coded_redundant_fmaps[:, 0] / first[corrupted]
-                print('recon')
-        return self.ungroup(decoded_feature_maps, dim=1)
+        redundant_feature_maps = super().forward(input)
+        decoded = self.sc.decode(redundant_feature_maps, dim=1)
+        if decoded is not None:
+            return decoded
+        self.detected = True
+        erasure = self.ec.erasure(self.simple_checksum_tensors, self.simple_checksum)
+        return self.sc.decode(redundant_feature_maps, 1, erasure)
 
 
 class ReorderingCodedConv2d(torch.nn.Conv2d):
@@ -412,7 +312,6 @@ class BloomStructuralCodedConv2d(torch.nn.Conv2d):
         super().__init__(in_channels, out_channels, kernel_size, stride, padding, dilation, groups, bias, padding_mode)
         self.injected = False
         self.r = out_channels // 5
-
 
     @staticmethod
     def code(weight, r, key, step, dim):

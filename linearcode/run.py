@@ -2,6 +2,7 @@ import csv
 import os
 import pickle
 import random
+import time
 
 import numpy as np
 import torch
@@ -50,7 +51,11 @@ elif CONFIG['protection'] == 'sc':
     model, _ = convert(model, mapping={
         torch.nn.Conv2d: StructuralCodedConv2d,
         torch.nn.Linear: StructuralCodedLinear,
-    }, in_place=True)
+    }, in_place=True, extra_kwargs={
+        'k': CONFIG['flips'],
+        'threshold': 1,
+        'n': 256
+    })
 elif CONFIG['protection'] == 'roc':
     model, _ = convert(model, mapping={
         torch.nn.Conv2d: ReorderingCodedConv2d
@@ -149,6 +154,7 @@ else:
         pickle.dump((grads, baseline, rands, protected_20_rands, [p.grad for p in parameters]), grad_file)
 
 layer, absolute_indices = rands[CONFIG['flips']][CONFIG['injection']]
+target_modules = []
 
 print('flipping', layer, absolute_indices)
 for index in absolute_indices:
@@ -158,23 +164,38 @@ for index in absolute_indices:
     with torch.no_grad():
         for m in model.modules():
             if isinstance(m, torch.nn.Conv2d) or isinstance(m, torch.nn.Linear):
-                if m.weight is parameters[layer]:
+                if m.weight is parameters[layer] or m.bias is parameters[layer]:
                     m.injected = True
                     m.observe = True
+                else:
+                    m.injected = False
+                    m.observe = False
+                for p_index, p in enumerate(parameters):
+                    if p is m.weight:
+                        m.layer = p_index
+                target_modules.append(m)
         corrupted = bitflip(parameters[layer][tensor_index], bit_index)
         print(parameters[layer][tensor_index], '->', corrupted, bit_index)
         parameters[layer][tensor_index] = corrupted
         print(layer, tensor_index, parameters[layer][tensor_index], parameters[layer].shape)
 
+target_modules = list(sorted(set(target_modules), key=lambda m: m.layer))
+
 evaluation = []
 
 with torch.no_grad():
     for i, (x, y) in enumerate(data_loader):
+        for t in target_modules:
+            t.detected = False
+        start_time = time.time()
         model_output = model(x)
         indices = torch.topk(model_output, k=k).indices
+        end_time = time.time()
         evaluation.append({'top5': indices,
                            'label': y,
                            'batch': i,
+                           'elapsed_time': end_time - start_time,
+                           'detection': [(t.detected, t.injected) for t in target_modules],
                            'batch_size': BATCH_SIZE})
         print("Done with batch {} after injection".format(i))
 
