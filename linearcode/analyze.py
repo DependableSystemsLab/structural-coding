@@ -13,7 +13,7 @@ from storage import load, load_pickle
 def draw_sdc(partial=True):
     baselines = {}
     _, baselines['resnet50'], rands = load_pickle('nonrecurring_resnet50')[:3]
-    _, baselines['alexnet'], rands = load_pickle('nonrecurring_alexnet')[:3]
+    # _, baselines['alexnet'], rands = load_pickle('nonrecurring_alexnet')[:3]
     sdcs = defaultdict(list)
 
     # model = get_model()
@@ -27,7 +27,7 @@ def draw_sdc(partial=True):
     # for i in range(1, len(sizes), 1):
     #     sizes[i] += sizes[i - 1]
 
-    key = lambda c: (c['model'], c['protection'], c['flips'])
+    key = lambda c: (c['protection'], c['flips'])
     missing = False
     percent = len(SLURM_ARRAY) // 100
     for i, config in enumerate(SLURM_ARRAY):
@@ -46,12 +46,25 @@ def draw_sdc(partial=True):
             sdcs[key(config)].extend(faulty)
         if i % percent == 0:
             print(i // percent, '%')
-            for i in sdcs:
-                print(i, sdc(baselines[i[0]], sdcs[i]))
+            # if partial:
+            #     print(',none,clipper,sc')
+                # for flips in (1, 2, 4, 8, 16, 32):
+                #     print(flips, end=',')
+                #     for i in sdcs:
+                #         if i[1] != flips:
+                #             continue
+                #         print(sdc(baselines['resnet50'], sdcs[i])[0], end=',')
+                #     print()
     if not partial and missing:
         return
-    for i in sdcs:
-        print(i, sdc(baselines[i[0]], sdcs[i]))
+    print(',none,clipper,sc')
+    for flips in (1, 2, 4, 8, 16, 32):
+        print(flips, end=',')
+        for i in sdcs:
+            if i[1] != flips:
+                continue
+            print(sdc(baselines['resnet50'], sdcs[i])[0], end=',')
+        print()
 
 
 def draw_image_dependence():
