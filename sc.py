@@ -123,6 +123,8 @@ class StructuralCode:
         return torch.transpose(tensor, destination, dim)
 
     def checksum(self, systematic: Tensor, dim=0) -> Tensor:
+        # return torch.sum(systematic, dim=dim)
+        # TODO use some correct thing overhead-wise
         return self._code(systematic, dim, 1)[0]
 
     def extract_systematic(self, tensor: Tensor, dim: int = 0) -> Tensor:

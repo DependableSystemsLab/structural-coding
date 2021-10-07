@@ -4,13 +4,16 @@ from collections import defaultdict
 import matplotlib.pyplot as plt
 import torch
 
-from analysis import sdc, merge, detection
+from analysis import sdc, merge, detection, elapsed_time, sc_detection_hit_rate
 from linearcode.models import get_model
 from linearcode.parameters import SLURM_ARRAY, DEFAULTS
 from storage import load, load_pickle
 
 
 def draw_sdc(partial=True):
+    return draw_metric(partial, sdc)
+
+def draw_metric(partial=True, metric_function=sdc):
     baselines = {}
     _, baselines['resnet50'], rands = load_pickle('nonrecurring_resnet50')[:3]
     # _, baselines['alexnet'], rands = load_pickle('nonrecurring_alexnet')[:3]
@@ -63,7 +66,7 @@ def draw_sdc(partial=True):
         for i in sdcs:
             if i[1] != flips:
                 continue
-            print(sdc(baselines['resnet50'], sdcs[i])[0], end=',')
+            print(metric_function(baselines['resnet50'], sdcs[i])[0], end=',')
         print()
 
 
@@ -285,7 +288,10 @@ def draw_precision():
     plt.show()
 
 
-draw_sdc(partial=True)
+# draw_sdc(partial=True)
+# draw_metric(partial=True, metric_function=elapsed_time)
+draw_metric(partial=True, metric_function=sc_detection_hit_rate)
+
 
 # data = [(
 #     ('clipper', 2), (0.00363141018897295, 0.000833659585670892), (0.0002596153935883194, 0.0002232800445650557)),
