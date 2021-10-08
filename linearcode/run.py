@@ -9,7 +9,7 @@ import torch
 
 from linearcode.models import get_model
 from linearcode.parameters import CONFIG, DEFAULTS
-from linearcode.settings import BATCH_SIZE
+from settings import BATCH_SIZE
 from datasets import get_fashion_mnist, get_image_net
 from injection import convert, bitflip, ClipperReLU, top_percent, RangerReLU, StructuralCodedConv2d, \
     ReorderingCodedConv2d, StructuralCodedLinear

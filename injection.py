@@ -73,8 +73,8 @@ class ClipperReLU(torch.nn.ReLU):
                     min(float(torch.min(forward)), self.bounds[0]),
                     max(float(torch.max(forward)), self.bounds[1])
                 )
+            return forward
         forward = torch.nan_to_num(forward, self.bounds[1] + 1, self.bounds[1] + 1, self.bounds[0] - 1)
-
         self.detection = torch.any(torch.any(torch.logical_or(forward > self.bounds[1], forward < self.bounds[0]), -1), -1)
         if not self.detection.any():
             self.detection = None
@@ -87,6 +87,47 @@ class ClipperReLU(torch.nn.ReLU):
     @classmethod
     def from_original(cls, original: torch.nn.ReLU):
         return cls()
+
+
+def clipper(activation_class: [torch.nn.ReLU, torch.nn.Hardswish]):
+    class ClipperActivation(activation_class):
+        def __init__(self, *args, bounds=None, **kwargs):
+            super().__init__(*args, **kwargs)
+            self.bounds = bounds
+            self.profile = False
+            self.detection = None
+
+        def forward(self, input: Tensor) -> Tensor:
+            forward = super().forward(input)
+            if self.profile:
+                if self.bounds is None:
+                    self.bounds = (float(torch.min(forward)), float(torch.max(forward)))
+                else:
+                    self.bounds = (
+                        min(float(torch.min(forward)), self.bounds[0]),
+                        max(float(torch.max(forward)), self.bounds[1])
+                    )
+                return forward
+            forward = torch.nan_to_num(forward, self.bounds[1] + 1, self.bounds[1] + 1, self.bounds[0] - 1)
+            self.detection = torch.any(
+                torch.any(torch.logical_or(forward > self.bounds[1], forward < self.bounds[0]), -1), -1)
+            if not self.detection.any():
+                self.detection = None
+            else:
+                self.detection = torch.nonzero(self.detection)
+            result = torch.clip(forward, *self.bounds)
+            result *= result != self.bounds[1]
+            return result
+
+        @classmethod
+        def from_original(cls, original: activation_class):
+            return cls()
+
+    return ClipperActivation
+
+
+ClipperReLU = clipper(torch.nn.ReLU)
+ClipperHardswish = clipper(torch.nn.Hardswish)
 
 
 class RangerReLU(torch.nn.ReLU):

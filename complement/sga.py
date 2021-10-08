@@ -8,7 +8,7 @@ import torch
 
 from complement.models import get_model
 from complement.parameters import CONFIG, DEFAULTS
-from complement.settings import BATCH_SIZE
+from settings import BATCH_SIZE
 from datasets import get_fashion_mnist, get_image_net
 from injection import convert, bitflip, ClipperReLU, top_percent, RangerReLU
 from storage import store

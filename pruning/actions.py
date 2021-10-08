@@ -8,7 +8,7 @@ from pruning.datasets import get_data_loader
 from pruning.injection import InjectionMixin, convert, ObserverRelu, InjectionConv2D, InjectionLinear, RangerReLU
 from pruning.models import get_model
 from pruning.parameters import CONFIG, DEFAULTS, BASELINE_CONFIG
-from pruning.settings import BATCH_SIZE
+from settings import BATCH_SIZE
 from storage import extend, load
 
 

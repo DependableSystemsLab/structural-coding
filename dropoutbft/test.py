@@ -3,7 +3,7 @@ import time
 
 from torch import Tensor
 
-from complement.settings import BATCH_SIZE
+from settings import BATCH_SIZE
 from datasets import get_image_net
 import torch
 import torch.nn.functional as F
