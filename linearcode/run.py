@@ -28,7 +28,7 @@ if CONFIG['protection'] in ('ranger', 'clipper'):
     }, in_place=True)
     bounds = []
     if CONFIG['model'] == 'resnet50':
-        bounds_filename = 'Resnet50_bounds_ImageNet_train20p_act.txt'
+        bounds_filename = 'bounds/resnet50.txt'
     elif CONFIG['model'] == 'FashionMNISTTutorial':
         bounds_filename = 'FashionMNISTTutorial_bounds.txt'
     elif CONFIG['model'] == 'FashionMNISTTutorial_smooth':
