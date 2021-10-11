@@ -1,30 +1,16 @@
 import sys
 
 import torch
-import torchvision.models
-
 import common.models
 from datasets import get_image_net_20p
 from injection import ClipperReLU, convert, ClipperHardswish
-
-model_classes = (
-    # ('alexnet', torchvision.models.alexnet),
-    ('squeezenet', torchvision.models.squeezenet1_1),
-    # big memory requirement
-    ('vgg19', torchvision.models.vgg19),
-    ('mobilenet', torchvision.models.mobilenet_v3_small),
-    ('googlenet', common.models.googlenet),
-    # big memory requirement
-    ('resnet50', common.models.resnet50),
-    # ('shufflenet', torchvision.models.shufflenet_v2_x0_5),
-)
 
 
 if __name__ == '__main__':
 
     _, model, device = sys.argv
 
-    for model_name, model_class in model_classes:
+    for model_name, model_class in common.models.MODEL_CLASSES:
         if model_name != model:
             continue
         model = model_class(pretrained=True)

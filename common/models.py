@@ -104,3 +104,16 @@ class MyInception(Inception):
 def googlenet(pretrained: bool = False, progress: bool = True, **kwargs: Any) -> "GoogLeNet":
     kwargs['blocks'] = [MyBasicConv2d, MyInception, MyInceptionAux]
     return torchvision.models.googlenet(pretrained, progress, **kwargs)
+
+
+MODEL_CLASSES = (
+    ('alexnet', torchvision.models.alexnet),
+    ('squeezenet', torchvision.models.squeezenet1_1),
+    # big memory requirement
+    ('vgg19', torchvision.models.vgg19),
+    ('mobilenet', torchvision.models.mobilenet_v3_small),
+    ('googlenet', googlenet),
+    # big memory requirement
+    ('resnet50', resnet50),
+    ('shufflenet', torchvision.models.shufflenet_v2_x0_5),
+)
