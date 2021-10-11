@@ -79,6 +79,10 @@ def get_image_net_20p():
     return get_full_image_net(pickle.load(open(IMAGENET20P_SAMPLER_PATH, mode='rb')))
 
 
+def get_dataset(config):
+    assert False
+
+
 if __name__ == '__main__':
     print(len(get_image_net_20p()))
     for x, y in get_image_net_20p():
