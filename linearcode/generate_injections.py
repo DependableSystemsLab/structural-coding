@@ -11,10 +11,9 @@ if __name__ == '__main__':
         b = 0
         w = 0
         for m in model.modules():
-            if isinstance(m, torch.nn.Linear) or isinstance(m, torch.nn.Conv2d) or isinstance(m, torch.nn.Conv1d):
-                if m.bias is not None:
-                    b += m.bias.flatten().shape[0]
+            if isinstance(m, torch.nn.Linear) or isinstance(m, torch.nn.Conv2d):
                 w += m.weight.flatten().shape[0]
+        b = sum(p.flatten().shape[0] for p in model.parameters())
         print(b,w, b * 100/w)
         continue
         parameters = list(model.parameters())
