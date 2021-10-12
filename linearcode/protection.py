@@ -1,10 +1,22 @@
 import torch
 
-from injection import convert, ClipperReLU, ClipperHardswish
+from injection import convert, ClipperReLU, ClipperHardswish, StructuralCodedConv2d, StructuralCodedLinear, \
+    NormalizedConv2d, NormalizedLinear
 
 
 def apply_sc(model, config):
-    assert False
+    model, _ = convert(model, mapping={
+        torch.nn.Conv2d: NormalizedConv2d,
+        torch.nn.Linear: NormalizedLinear,
+    }, in_place=True)
+    model, _ = convert(model, mapping={
+        torch.nn.Conv2d: StructuralCodedConv2d,
+        torch.nn.Linear: StructuralCodedLinear,
+    }, in_place=True, extra_kwargs={
+        'k': 32,
+        'threshold': 1,
+        'n': 256
+    })
 
 
 def apply_clipper(model, config):

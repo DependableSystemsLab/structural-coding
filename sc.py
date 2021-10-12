@@ -2,6 +2,7 @@ import random
 from itertools import combinations
 from typing import Optional, Tuple
 
+import numpy.random
 import torch
 from torch import Tensor, LongTensor
 
@@ -79,7 +80,7 @@ class StructuralCode:
         checksum = torch.sum(tensor[n] - self.checksum(systematic))
         if abs(checksum) <= self.threshold:
             return self.out_transform(systematic, dim, 0)
-        # print(checksum)
+        print(checksum)
         if erasure is None:
             return None
         erasure = torch.sort(erasure).values
@@ -104,7 +105,8 @@ class StructuralCode:
         if self._weights is None:
             seed = torch.seed()
             torch.manual_seed(0)
-            self._weights = torch.rand((self.n, self.k))
+            rnd = numpy.random.RandomState(2021)
+            self._weights = torch.FloatTensor(rnd.rand(self.n, self.k))
             torch.manual_seed(seed)
             self._weights[:, 0] = 1
         return torch.clone(self._weights)

@@ -20,3 +20,11 @@ def lcs(X, Y):
 
     # L[m][n] contains the length of LCS of X[0..n-1] & Y[0..m-1]
     return L[m][n]
+
+
+def biggest_power_of_two(n):
+    result = 1
+    while n % 2 == 0:
+        n = n // 2
+        result *= 2
+    return result

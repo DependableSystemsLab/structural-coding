@@ -1,12 +1,14 @@
 from copy import deepcopy
 from struct import pack, unpack
+from typing import overload
 
 import torch.nn
 from torch import Tensor
+from torch.nn import Module
 from torch.nn.common_types import _size_2_t
 
 from sc import StructuralCode, ErasureCode
-from utils import lcs
+from utils import lcs, biggest_power_of_two
 
 
 def convert(module, mapping=None, in_place=False, injection_index=None, extra_kwargs=None):
@@ -75,7 +77,8 @@ class ClipperReLU(torch.nn.ReLU):
                 )
             return forward
         forward = torch.nan_to_num(forward, self.bounds[1] + 1, self.bounds[1] + 1, self.bounds[0] - 1)
-        self.detection = torch.any(torch.any(torch.logical_or(forward > self.bounds[1], forward < self.bounds[0]), -1), -1)
+        self.detection = torch.any(torch.any(torch.logical_or(forward > self.bounds[1], forward < self.bounds[0]), -1),
+                                   -1)
         if not self.detection.any():
             self.detection = None
         else:
@@ -224,11 +227,11 @@ class StructuralCodedConv2d(torch.nn.Conv2d):
                        original.padding_mode, **extra_kwarg)
         coded_weights = instance.sc.code(original.weight)
         instance.weight = torch.nn.Parameter(coded_weights)
-        checksum_tensors = (instance.weight, )
+        checksum_tensors = (instance.weight,)
         if original.bias is not None:
             coded_bias = instance.sc.code(original.bias)
             instance.bias = torch.nn.Parameter(coded_bias)
-            checksum_tensors += (instance.bias, )
+            checksum_tensors += (instance.bias,)
         instance.simple_checksum_tensors = checksum_tensors
         instance.simple_checksum = instance.ec.checksum(instance.simple_checksum_tensors)
         return instance
@@ -244,7 +247,6 @@ class StructuralCodedConv2d(torch.nn.Conv2d):
 
 
 class StructuralCodedLinear(torch.nn.Linear):
-
     maximum_channels = 128
 
     def __init__(self, in_features: int, out_features: int, bias: bool = True, k=1, threshold=0.1, n=256) -> None:
@@ -266,7 +268,8 @@ class StructuralCodedLinear(torch.nn.Linear):
 
     @staticmethod
     def ungroup(tensor: Tensor, dim=0):
-        return tensor.reshape(tensor.shape[:dim] + (tensor.shape[dim] * tensor.shape[dim + 1],) + tensor.shape[dim + 2:])
+        return tensor.reshape(
+            tensor.shape[:dim] + (tensor.shape[dim] * tensor.shape[dim + 1],) + tensor.shape[dim + 2:])
 
     @classmethod
     def from_original(cls, original: torch.nn.Linear, extra_kwargs=None):
@@ -275,11 +278,11 @@ class StructuralCodedLinear(torch.nn.Linear):
         instance = cls(original.in_features, original.out_features, original.bias is not None, **extra_kwargs)
         coded_weights = instance.sc.code(original.weight)
         instance.weight = torch.nn.Parameter(coded_weights)
-        instance.simple_checksum_tensors = (instance.weight, )
+        instance.simple_checksum_tensors = (instance.weight,)
         if original.bias is not None:
             coded_bias = instance.sc.code(original.bias)
             instance.bias = torch.nn.Parameter(coded_bias)
-            instance.simple_checksum_tensors += (instance.bias, )
+            instance.simple_checksum_tensors += (instance.bias,)
         instance.simple_checksum = instance.ec.checksum(instance.simple_checksum_tensors)
         return instance
 
@@ -384,10 +387,12 @@ class BloomStructuralCodedConv2d(torch.nn.Conv2d):
         original_channel_count = channels_count - r
 
         first = torch.FloatTensor([key + i * step for i in range(original_channel_count)], device=code.device)
-        second = torch.FloatTensor([key + i * step for i in range(original_channel_count, 2 * original_channel_count)], device=code.device)
+        second = torch.FloatTensor([key + i * step for i in range(original_channel_count, 2 * original_channel_count)],
+                                   device=code.device)
         scale_factor = first[holdout] / second[holdout]
         checksum_weights = first - second * scale_factor
-        checksum_values = code.__getitem__(channel_index(original_channel_count)) - scale_factor * code.__getitem__(channel_index(original_channel_count + 1))
+        checksum_values = code.__getitem__(channel_index(original_channel_count)) - scale_factor * code.__getitem__(
+            channel_index(original_channel_count + 1))
         original_channels = code.__getitem__([
             slice(None, original_channel_count) if i == channel_dimension else slice(None, None, None)
             for i in range(len(code.shape))])
@@ -412,7 +417,7 @@ class BloomStructuralCodedConv2d(torch.nn.Conv2d):
         redundant_feature_maps = super().forward(input)
         decoded_feature_maps = redundant_feature_maps[:, :-self.r]
         hmm = self.code(decoded_feature_maps, self.r, self.key, self.step, (2, 3))
-        checksums = torch.sum((hmm - redundant_feature_maps), (1, ))
+        checksums = torch.sum((hmm - redundant_feature_maps), (1,))
 
         print(torch.sum(checksums), self.injected)
         image_index = 2
@@ -430,3 +435,96 @@ class BloomStructuralCodedConv2d(torch.nn.Conv2d):
             # print(torch.sum(self.checksum(redundant_feature_maps, self.r, self.key, self.step, (2, 3), 412)))
         return decoded_feature_maps
 
+
+class NormalizedConv2d(torch.nn.Module):
+
+    def __init__(self, original):
+        super().__init__()
+        self.groups = original.groups
+        group_in_channels = original.in_channels // original.groups
+        self.group_in_channels = group_in_channels
+        if group_in_channels > 64:
+            divisions = group_in_channels // min(64, biggest_power_of_two(group_in_channels))
+        else:
+            divisions = 1
+        self.divisions = divisions
+        division_in_channels = group_in_channels // divisions
+        self.division_in_channels = division_in_channels
+        for i in range(self.groups):
+            for j in range(self.divisions):
+                convolution = torch.nn.Conv2d(original.in_channels // divisions // self.groups,
+                                              original.out_channels,
+                                              original.kernel_size,
+                                              original.stride,
+                                              original.padding, original.dilation, 1, original.bias is not None,
+                                              original.padding_mode)
+                group_base_index = i * group_in_channels
+                division_base_index = j * division_in_channels
+                start = group_base_index + division_base_index
+                end = start + division_in_channels
+                weights = original.weight[:, start: end]
+                if original.bias is not None:
+                    convolution.bias = original.bias
+                convolution.weight = torch.nn.Parameter(weights)
+                self.__setattr__('conv_{}_{}'.format(i, j), convolution)
+
+    def forward(self, input: Tensor) -> Tensor:
+        result = []
+        for i in range(self.groups):
+            division_result = None
+            for j in range(self.divisions):
+                group_base_index = i * self.group_in_channels
+                division_base_index = j * self.division_in_channels
+                start = group_base_index + division_base_index
+                end = start + self.division_in_channels
+                forward = getattr(self, 'conv_{}_{}'.format(i, j)).forward(input[:, start: end])
+                if division_result is None:
+                    division_result = forward
+                else:
+                    division_result += forward
+            result.append(division_result)
+        return torch.cat(result)
+
+    @classmethod
+    def from_original(cls, original: torch.nn.Conv2d):
+        return cls(original)
+
+
+class NormalizedLinear(torch.nn.Module):
+
+    def __init__(self, original: torch.nn.Linear):
+        super().__init__()
+        if original.in_features > 512:
+            divisions = original.in_features // min(512, biggest_power_of_two(original.in_features))
+        else:
+            divisions = 1
+        self.divisions = divisions
+        division_in_features = original.in_features // divisions
+        self.division_in_features = division_in_features
+        for j in range(self.divisions):
+            convolution = torch.nn.Linear(original.in_features, original.out_features, original.bias is not None)
+            division_base_index = j * division_in_features
+            start = division_base_index
+            end = start + division_in_features
+            weights = original.weight[:, start: end]
+            if original.bias is not None:
+                convolution.bias = original.bias
+            convolution.weight = torch.nn.Parameter(weights)
+            self.__setattr__('linear_{}'.format(j), convolution)
+
+    def forward(self, input: Tensor) -> Tensor:
+        division_result = None
+        for j in range(self.divisions):
+            division_base_index = j * self.division_in_features
+            start = division_base_index
+            end = start + self.division_in_features
+            forward = getattr(self, 'linear_{}'.format(j)).forward(input[:, start: end])
+            if division_result is None:
+                division_result = forward
+            else:
+                division_result += forward
+        return division_result
+
+    @classmethod
+    def from_original(cls, original: torch.nn.Linear):
+        return cls(original)

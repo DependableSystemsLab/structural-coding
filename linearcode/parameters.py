@@ -22,7 +22,11 @@ DOMAIN = {
 
 # don't use short circuit execution here
 CONSTRAINTS = (
-    lambda c: c['sampler'] == 'none',
+    # lambda c: c['sampler'] == 'none',
+    lambda c: c['sampler'] == 'tiny',
+    # lambda c: c['dataset'] == 'imagenet_ds',
+    lambda c: c['dataset'] == 'imagenet',
+    lambda c: c['injection'] == 0,
     lambda c: any((c['flips'] != 0, (c['injection'] == 0, c['protection'] == 'none'))),  # ensure baseline execution
     lambda c: c['protection'] in ('sc', 'none', 'clipper'),
     lambda c: c['model'] in ('resnet50', 'mobilenet'),

@@ -1,4 +1,5 @@
 import numpy
+import torch.nn
 
 from common.models import MODEL_CLASSES
 
@@ -7,7 +8,15 @@ if __name__ == '__main__':
 
     for model_name, model_class in MODEL_CLASSES:
         model = model_class()
-
+        b = 0
+        w = 0
+        for m in model.modules():
+            if isinstance(m, torch.nn.Linear) or isinstance(m, torch.nn.Conv2d) or isinstance(m, torch.nn.Conv1d):
+                if m.bias is not None:
+                    b += m.bias.flatten().shape[0]
+                w += m.weight.flatten().shape[0]
+        print(b,w, b * 100/w)
+        continue
         parameters = list(model.parameters())
         total_size = 0
         for i, p in enumerate(parameters):

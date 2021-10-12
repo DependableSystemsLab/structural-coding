@@ -12,7 +12,7 @@ def inject_memory_fault(model, config, quantized=False):
     if config['flips'] // 1 == config['flips']:  # if is integer
         assert False
     ber = config['flips']
-    parameters = [p.flatten() for p in model.parameters()]
+    parameters = get_flattened_weights(model)
     size = sum(map(lambda p: p.shape[0] * 32, parameters))
     count = rnd.binomial(size, ber)
     bit_indices_to_flip = set()
@@ -28,4 +28,12 @@ def inject_memory_fault(model, config, quantized=False):
                 offset += len(parameter)
                 parameter_index -= len(parameter)
                 parameter = next(pointer, None)
-            parameter[parameter_index] = bitflip(parameter[parameter_index], bit_index % 32)
+            parameter[parameter_index] = bitflip(float(parameter[parameter_index]), bit_index % 32)
+
+
+def get_flattened_weights(model):
+    parameters = []
+    for m in model.modules():
+        if hasattr(m, 'weight'):
+            parameters.append(m.weight.flatten())
+    return parameters
