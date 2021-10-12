@@ -15,6 +15,7 @@ def inject_memory_fault(model, config, quantized=False):
     parameters = get_flattened_weights(model)
     size = sum(map(lambda p: p.shape[0] * 32, parameters))
     count = rnd.binomial(size, ber)
+    print('Injecting', count, 'faults.')
     bit_indices_to_flip = set()
     while len(bit_indices_to_flip) < count:
         bit_indices_to_flip.add(rnd.randint(0, size - 1))

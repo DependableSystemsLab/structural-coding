@@ -8,7 +8,7 @@ def apply_sc(model, config):
     model, _ = convert(model, mapping={
         torch.nn.Conv2d: NormalizedConv2d,
         torch.nn.Linear: NormalizedLinear,
-    }, in_place=True)
+    })
     model, _ = convert(model, mapping={
         torch.nn.Conv2d: StructuralCodedConv2d,
         torch.nn.Linear: StructuralCodedLinear,
@@ -17,6 +17,7 @@ def apply_sc(model, config):
         'threshold': 1,
         'n': 256
     })
+    return model
 
 
 def apply_clipper(model, config):
@@ -36,7 +37,7 @@ def apply_clipper(model, config):
             m.bounds = bounds[relu_counter]
             m.module_index = relu_counter
             relu_counter += 1
-
+    return model
 
 PROTECTIONS = {
     'none': lambda x, config: x,

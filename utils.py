@@ -28,3 +28,10 @@ def biggest_power_of_two(n):
         n = n // 2
         result *= 2
     return result
+
+
+def biggest_divisor_smaller_than(n, k):
+    for i in range(k, -1, -1):
+        if n % i == 0:
+            return i
+    return 1

@@ -8,7 +8,7 @@ from torch.nn import Module
 from torch.nn.common_types import _size_2_t
 
 from sc import StructuralCode, ErasureCode
-from utils import lcs, biggest_power_of_two
+from utils import lcs, biggest_power_of_two, biggest_divisor_smaller_than
 
 
 def convert(module, mapping=None, in_place=False, injection_index=None, extra_kwargs=None):
@@ -444,7 +444,7 @@ class NormalizedConv2d(torch.nn.Module):
         group_in_channels = original.in_channels // original.groups
         self.group_in_channels = group_in_channels
         if group_in_channels > 64:
-            divisions = group_in_channels // min(64, biggest_power_of_two(group_in_channels))
+            divisions = group_in_channels // biggest_divisor_smaller_than(group_in_channels, 64)
         else:
             divisions = 1
         self.divisions = divisions
@@ -452,17 +452,18 @@ class NormalizedConv2d(torch.nn.Module):
         self.division_in_channels = division_in_channels
         for i in range(self.groups):
             for j in range(self.divisions):
+                group_out_channels = original.out_channels // self.groups
                 convolution = torch.nn.Conv2d(original.in_channels // divisions // self.groups,
-                                              original.out_channels,
+                                              group_out_channels,
                                               original.kernel_size,
                                               original.stride,
                                               original.padding, original.dilation, 1, original.bias is not None,
                                               original.padding_mode)
                 group_base_index = i * group_in_channels
                 division_base_index = j * division_in_channels
-                start = group_base_index + division_base_index
+                start = division_base_index
                 end = start + division_in_channels
-                weights = original.weight[:, start: end]
+                weights = original.weight[group_base_index: group_base_index + group_out_channels, start: end]
                 if original.bias is not None:
                     convolution.bias = original.bias
                 convolution.weight = torch.nn.Parameter(weights)
@@ -483,7 +484,7 @@ class NormalizedConv2d(torch.nn.Module):
                 else:
                     division_result += forward
             result.append(division_result)
-        return torch.cat(result)
+        return torch.cat(result, dim=1)
 
     @classmethod
     def from_original(cls, original: torch.nn.Conv2d):
@@ -495,14 +496,14 @@ class NormalizedLinear(torch.nn.Module):
     def __init__(self, original: torch.nn.Linear):
         super().__init__()
         if original.in_features > 512:
-            divisions = original.in_features // min(512, biggest_power_of_two(original.in_features))
+            divisions = original.in_features // biggest_divisor_smaller_than(original.in_features, 512)
         else:
             divisions = 1
         self.divisions = divisions
         division_in_features = original.in_features // divisions
         self.division_in_features = division_in_features
         for j in range(self.divisions):
-            convolution = torch.nn.Linear(original.in_features, original.out_features, original.bias is not None)
+            convolution = torch.nn.Linear(division_in_features, original.out_features, original.bias is not None)
             division_base_index = j * division_in_features
             start = division_base_index
             end = start + division_in_features
