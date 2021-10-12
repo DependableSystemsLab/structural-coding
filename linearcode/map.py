@@ -18,7 +18,7 @@ model = model_class(pretrained=True)
 model.eval()
 
 #  protect model
-model = PROTECTIONS[CONFIG['protection']](model)
+PROTECTIONS[CONFIG['protection']](model, CONFIG)
 
 # corrupt model
 inject_memory_fault(model, CONFIG)

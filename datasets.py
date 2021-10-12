@@ -1,18 +1,16 @@
 import csv
-import json
 import os
 import pickle
-import random
 from typing import Tuple, List, Dict, Any, Optional, Callable
 
 import numpy.random
 import torch.utils.data
 import torchvision.datasets.folder
+from matplotlib import pyplot
 from torchvision import transforms
 
 from imagenet_class_index import IMAGENET_CLASS_INDEX
 from settings import BATCH_SIZE, IMAGENET_PATH, IMAGENET1K_PATH, IMAGENET20P_SAMPLER_PATH, IMAGENET_ROOT
-from matplotlib import pyplot
 
 
 class SparseImageNet(torchvision.datasets.ImageFolder):
@@ -79,7 +77,7 @@ def get_image_net(sampler=None):
         transforms.Normalize(mean=[0.485, 0.456, 0.406],
                              std=[0.229, 0.224, 0.225])
     ])
-    dataset = FullImageNet(IMAGENET1K_PATH, transform=data_transform)
+    dataset = SparseImageNet(IMAGENET1K_PATH, transform=data_transform)
     return torch.utils.data.DataLoader(dataset, batch_size=BATCH_SIZE, sampler=sampler)
 
 
@@ -123,10 +121,15 @@ def get_image_net_20p():
 
 
 def get_dataset(config):
+    rnd = numpy.random.RandomState(2021)
     if config['dataset'] == 'imagenet_ds':
-        rnd = numpy.random.RandomState(2021)
         sampler = sorted(rnd.choice(range(50000), 10000, replace=False))
         return get_full_image_net(sampler, 'val')
+    if config['dataset'] == 'imagenet':
+        sampler = None
+        if config['sampler'] == 'tiny':
+            sampler = sorted(rnd.choice(range(1000), BATCH_SIZE, replace=False))
+        return get_image_net(sampler)
     assert False
 
 
