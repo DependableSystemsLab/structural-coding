@@ -13,7 +13,8 @@ from linearcode.protection import PROTECTIONS
 from settings import BATCH_SIZE
 from storage import extend
 
-model = MODEL_CLASSES[CONFIG['model']](pretrained=True)
+model_class = dict(MODEL_CLASSES)[CONFIG['model']]
+model = model_class(pretrained=True)
 model.eval()
 
 #  protect model

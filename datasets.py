@@ -4,6 +4,7 @@ import pickle
 import random
 from typing import Tuple, List, Dict
 
+import numpy.random
 import torch.utils.data
 import torchvision.datasets.folder
 from torchvision import transforms
@@ -80,6 +81,9 @@ def get_image_net_20p():
 
 
 def get_dataset(config):
+    if config['dataset'] == 'imagenet_ds':
+        rnd = numpy.random.RandomState(2021)
+
     assert False
 
 
