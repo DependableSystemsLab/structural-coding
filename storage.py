@@ -1,5 +1,6 @@
 import os
 import pickle
+from filelock import FileLock
 
 
 def get_storage_filename(key, defaults=None, extension='', storage=None):
@@ -22,7 +23,8 @@ def store(key, value, defaults=None):
 
 def load(key, defaults=None, storage=None):
     filename = get_storage_filename(key, defaults, storage=storage)
-    return load_pickle(filename)
+    with FileLock(filename + '.lock'):
+        return load_pickle(filename)
 
 
 def load_pickle(filename):
@@ -35,7 +37,8 @@ def load_pickle(filename):
 
 
 def extend(key, value, defaults):
-    result = load(key, defaults) or []
-    result.extend(value)
-    store(key, result, defaults)
-
+    filename = get_storage_filename(key, defaults)
+    with FileLock(filename + '.lock'):
+        result = load(key, defaults) or []
+        result.extend(value)
+        store(key, result, defaults)
