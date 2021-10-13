@@ -1,8 +1,9 @@
 #!/bin/bash
 #SBATCH --time=8:00:00
 #SBATCH --mem=16G
-#SBATCH --array 0-1440
+#SBATCH --array 0-0
 
+export IMAGENET_ROOT=/home/aasgarik/scratch/data/imagenet
 export PYTHONPATH=$PYTHONPATH:/home/aasgarik/projects/def-karthikp/aasgarik/reasilience
 source /home/aasgarik/projects/def-karthikp/aasgarik/dnnfault/venv/bin/activate
 INTERNAL_SIZE=40
