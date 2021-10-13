@@ -6,6 +6,14 @@ from pypapi import events as papi_events
 
 from injection import convert, StructuralCodedConv2d, StructuralCodedLinear, ClipperReLU
 
+for i in range(32, 257):
+    inp = torch.randn(16, 32, 229, 229)
+    w = torch.randn(i, 32, 4, 5)
+    papi_high.start_counters([papi_events.PAPI_FP_OPS])
+    torch.conv2d(inp, w)
+    print(i, papi_high.stop_counters()[0], sep=',')
+exit()
+
 torch.random.manual_seed(0)
 image = torch.rand((1, 3, 299, 299))
 

@@ -14,7 +14,8 @@ if __name__ == '__main__':
             if isinstance(m, torch.nn.Linear) or isinstance(m, torch.nn.Conv2d):
                 w += m.weight.flatten().shape[0]
         b = sum(p.flatten().shape[0] for p in model.parameters())
-        print(b,w, b * 100/w)
+        b -= w
+        print(model_name, '&', round(w * 100/ (w+ b), 2),'&', round(b * 100/ (w+ b), 2), end=' \\\\\n')
         continue
         parameters = list(model.parameters())
         total_size = 0
