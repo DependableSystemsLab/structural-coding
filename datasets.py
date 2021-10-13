@@ -128,7 +128,7 @@ def get_dataset(config):
     if config['dataset'] == 'imagenet':
         sampler = None
         if config['sampler'] == 'tiny':
-            sampler = sorted(rnd.choice(range(1000), BATCH_SIZE * 2, replace=False))
+            sampler = sorted(rnd.choice(range(1000), BATCH_SIZE, replace=False))
         return get_image_net(sampler)
     assert False
 

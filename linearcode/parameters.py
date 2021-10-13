@@ -13,25 +13,24 @@ DOMAIN = {
                 'comma.ai', 'commaai_test'),
     'flips': (1, 2, 4, 8, 16, 32,
               0.00000552972,
+              0.00000552972 * 0.5 ** 2,
               0.00000552972 * 0.5 ** 4,
+              0.00000552972 * 0.5 ** 6,
               0.00000552972 * 0.5 ** 8,
-              0.00000552972 * 0.5 ** 12,
-              0.00000552972 * 0.5 ** 16,
               0)
 }
 
 # don't use short circuit execution here
 CONSTRAINTS = (
-    # lambda c: c['sampler'] == 'none',
-    lambda c: c['sampler'] == 'tiny',
-    # lambda c: c['dataset'] == 'imagenet_ds',
-    lambda c: c['dataset'] == 'imagenet',
-    lambda c: c['injection'] == 0,
+    lambda c: c['sampler'] == 'none',
+    # lambda c: c['sampler'] == 'tiny',
+    lambda c: c['dataset'] == 'imagenet_ds',
+    # lambda c: c['dataset'] == 'imagenet',
     lambda c: any((c['flips'] != 0, (c['injection'] == 0, c['protection'] == 'none'))),  # ensure baseline execution
     lambda c: c['protection'] in ('sc', 'none', 'clipper'),
-    lambda c: c['model'] in ('resnet50', 'mobilenet'),
     lambda c: c['flips'] < 1,
     lambda c: not c['quantization'],
+
 )
 #
 # CONSTRAINTS = (
