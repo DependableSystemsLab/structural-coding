@@ -1,6 +1,8 @@
 import os
 from itertools import product
 
+from common.models import QUANTIZED_MODEL_CLASSES
+
 DOMAIN = {
     'injection': range(1),
     'model': ('resnet50', 'alexnet', 'squeezenet', 'vgg19', 'mobilenet', 'googlenet', 'shufflenet', 'e2e'),
@@ -27,6 +29,7 @@ CONSTRAINTS = (
     lambda c: c['dataset'] == 'imagenet_ds',
     # lambda c: c['dataset'] == 'imagenet',
     lambda c: any((c['flips'] != 0, all((c['injection'] == 0, c['protection'] == 'none')))),  # ensure baseline execution
+    lambda c: any((not c['quantization'], c['model'] in [name for name, clazz in QUANTIZED_MODEL_CLASSES])),
     lambda c: c['protection'] in ('sc', 'none', 'clipper', 'tmr'),
     lambda c: c['flips'] < 1,
     lambda c: c['model'] != "e2e",

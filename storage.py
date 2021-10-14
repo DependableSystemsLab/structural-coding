@@ -3,7 +3,7 @@ import pickle
 
 try:
     from filelock.filelock import FileLock
-except ImportError:
+except (ImportError, ModuleNotFoundError):
     from filelock import FileLock
 
 

@@ -117,3 +117,11 @@ MODEL_CLASSES = (
     ('resnet50', resnet50),
     ('shufflenet', torchvision.models.shufflenet_v2_x0_5),
 )
+
+QUANTIZED_MODEL_CLASSES = (
+    ('mobilenet', torchvision.models.quantization.mobilenet_v3_large),
+    ('googlenet', torchvision.models.quantization.googlenet),
+    # big memory requirement
+    ('resnet50', torchvision.models.quantization.resnet50),
+    ('shufflenet', torchvision.models.quantization.shufflenet_v2_x0_5),
+)

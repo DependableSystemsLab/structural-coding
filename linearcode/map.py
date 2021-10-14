@@ -7,7 +7,7 @@ import time
 import torch
 import torchvision.models.quantization.utils
 
-from common.models import MODEL_CLASSES
+from common.models import MODEL_CLASSES, QUANTIZED_MODEL_CLASSES
 from datasets import get_dataset
 from linearcode.fault import inject_memory_fault
 from linearcode.parameters import CONFIG, DEFAULTS
@@ -17,11 +17,14 @@ from storage import extend, load
 
 done_batches = set((e['config']['injection'], e['batch'], e['batch_size']) for e in load(CONFIG, {**DEFAULTS, 'injection': CONFIG['injection']}) or [])
 
-model_class = dict(MODEL_CLASSES)[CONFIG['model']]
-model = model_class(pretrained=True)
 
 if CONFIG['quantization']:
-    assert False
+    model_class = dict(QUANTIZED_MODEL_CLASSES)[CONFIG['model']]
+    model = model_class(pretrained=True, quantize=True)
+else:
+    model_class = dict(MODEL_CLASSES)[CONFIG['model']]
+    model = model_class(pretrained=True)
+
 #  protect model
 model = PROTECTIONS[CONFIG['protection']](model, CONFIG)
 model.eval()
