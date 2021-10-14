@@ -1,6 +1,7 @@
 
 
 #  create model
+import sys
 import time
 
 import torch
@@ -52,5 +53,5 @@ with torch.no_grad():
                            'elapsed_time': end_time - start_time,
                            'protection': [m.get_internal_log() for m in protection_modules],
                            'batch_size': BATCH_SIZE})
-        print("Done with batch {} after injection".format(i))
+        print("Done with batch {} after injection".format(i), file=sys.stderr)
     extend(CONFIG, evaluation, {**DEFAULTS, 'injection': CONFIG['injection']})
