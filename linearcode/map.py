@@ -35,7 +35,7 @@ with torch.no_grad():
     for i, (x, y) in enumerate(dataset):
         key = (CONFIG['injection'], i, BATCH_SIZE)
         if key in done_batches:
-            print('Skipping batch {}.'.format(key))
+            print('Skipping batch {}.'.format(key), file=sys.stderr)
             continue
         protection_modules = []
         for m in model.modules():
