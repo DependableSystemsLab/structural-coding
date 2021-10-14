@@ -1,7 +1,7 @@
 import torch
 
 from injection import convert, ClipperReLU, ClipperHardswish, StructuralCodedConv2d, StructuralCodedLinear, \
-    NormalizedConv2d, NormalizedLinear
+    NormalizedConv2d, NormalizedLinear, TMRLinear, TMRConv2d
 
 
 def apply_sc(model, config):
@@ -16,6 +16,14 @@ def apply_sc(model, config):
         'k': 32,
         'threshold': 1,
         'n': 256
+    })
+    return model
+
+
+def apply_tmr(model, config):
+    model, _ = convert(model, mapping={
+        torch.nn.Conv2d: TMRConv2d,
+        torch.nn.Linear: TMRLinear,
     })
     return model
 
@@ -43,4 +51,5 @@ PROTECTIONS = {
     'none': lambda x, config: x,
     'sc': apply_sc,
     'clipper': apply_clipper,
+    'tmr': apply_tmr,
 }
