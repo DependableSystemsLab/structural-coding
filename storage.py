@@ -1,9 +1,14 @@
 import os
 import pickle
-from filelock.filelock import FileLock
+
+try:
+    from filelock.filelock import FileLock
+except ImportError:
+    from filelock import FileLock
 
 
-TIMEOUT = 3600
+TIMEOUT = 300
+
 
 def get_storage_filename(key, defaults=None, extension='', storage=None):
     if defaults is None:
