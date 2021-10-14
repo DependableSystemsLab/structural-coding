@@ -4,6 +4,7 @@ from typing import overload
 from torch.nn import functional as F
 
 import torch.nn
+import torch.nn.quantized
 from torch import Tensor
 from torch.nn import Module
 from torch.nn.common_types import _size_2_t
@@ -580,3 +581,42 @@ class TMRConv2d(torch.nn.Conv2d):
         )
         recovered = (first != second) * third + first * (first == second)
         return self._conv_forward(input, recovered, self.bias)
+
+
+class RADARLinear(torch.nn.quantized.Linear):
+
+    def __init__(self, in_features: int, out_features: int, bias: bool = True) -> None:
+        super().__init__(in_features, out_features, bias)
+
+    @classmethod
+    def from_original(cls, original: torch.nn.quantized.Linear):
+        result = cls(original.in_features, original.out_features, original.bias is not None)
+        result.weight = original.weight
+        result.bias = original.bias
+        return result
+
+    def forward(self, input: Tensor) -> Tensor:
+        return super().forward(input)
+
+
+class RADARConv2d(torch.nn.quantized.Conv2d):
+
+    def __init__(self, in_channels: int, out_channels: int, kernel_size: _size_2_t, stride: _size_2_t = 1,
+                 padding: _size_2_t = 0, dilation: _size_2_t = 1, groups: int = 1, bias: bool = True,
+                 padding_mode: str = 'zeros'):
+        super().__init__(in_channels, out_channels, kernel_size, stride, padding, dilation, groups, bias, padding_mode)
+
+    @classmethod
+    def from_original(cls, original: torch.nn.quantized.Conv2d):
+        result = cls(original.in_channels, original.out_channels, original.kernel_size, original.stride,
+                     original.padding, original.dilation, original.groups, original.bias is not None,
+                     original.padding_mode)
+        result.weight = original.weight
+        result.bias = original.bias
+        return result
+
+    def forward(self, input: Tensor) -> Tensor:
+        return super().forward(input)
+
+
+

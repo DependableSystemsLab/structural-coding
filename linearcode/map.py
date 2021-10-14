@@ -5,6 +5,7 @@ import sys
 import time
 
 import torch
+import torchvision.models.quantization.utils
 
 from common.models import MODEL_CLASSES
 from datasets import get_dataset
@@ -18,10 +19,12 @@ done_batches = set((e['config']['injection'], e['batch'], e['batch_size']) for e
 
 model_class = dict(MODEL_CLASSES)[CONFIG['model']]
 model = model_class(pretrained=True)
-model.eval()
 
+if CONFIG['quantization']:
+    assert False
 #  protect model
 model = PROTECTIONS[CONFIG['protection']](model, CONFIG)
+model.eval()
 
 # corrupt model
 inject_memory_fault(model, CONFIG)

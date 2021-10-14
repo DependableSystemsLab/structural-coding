@@ -1,11 +1,11 @@
 import numpy.random
 import torch
+from torch.nn import Parameter
 
 from injection import bitflip
 
 
-def inject_memory_fault(model, config, quantized=False):
-    assert not quantized
+def inject_memory_fault(model, config):
     rnd = numpy.random.RandomState(config['injection'])
     if config['flips'] == 0:
         return
@@ -13,28 +13,43 @@ def inject_memory_fault(model, config, quantized=False):
         assert False
     ber = config['flips']
     parameters = get_flattened_weights(model)
-    size = sum(map(lambda p: p.shape[0] * 32, parameters))
+    modules, parameters = zip(*parameters)
+    bit_width = 32
+    if config['quantization']:
+        bit_width = 8
+    size = sum(map(lambda p: p.shape[0] * bit_width, parameters))
     count = rnd.binomial(size, ber)
     print('Injecting', count, 'faults.')
     bit_indices_to_flip = set()
     while len(bit_indices_to_flip) < count:
         bit_indices_to_flip.add(rnd.randint(0, size - 1))
     pointer = iter(parameters)
+    module_pointer = iter(modules)
     parameter = next(pointer)
+    module = next(pointer)
     offset = 0
     with torch.no_grad():
         for bit_index in sorted(bit_indices_to_flip):
-            parameter_index = bit_index // 32 - offset
+            parameter_index = bit_index // bit_width - offset
             while parameter_index >= len(parameter) and parameter is not None:
                 offset += len(parameter)
                 parameter_index -= len(parameter)
                 parameter = next(pointer, None)
-            parameter[parameter_index] = bitflip(float(parameter[parameter_index]), bit_index % 32)
+                module = next(module_pointer, None)
+            parameter[parameter_index] = bitflip(float(parameter[parameter_index]), bit_index % bit_width)
 
 
 def get_flattened_weights(model):
     parameters = []
     for m in model.modules():
-        if hasattr(m, 'weight'):
-            parameters.append(m.weight.flatten())
+        if hasattr(m, 'weight') and type(m) in (
+            torch.nn.Linear,
+            torch.nn.Conv2d,
+            torch.nn.quantized.Linear,
+            torch.nn.quantized.Conv2d,
+        ):
+            weight = m.weight
+            if callable(weight):
+                weight = weight()
+            parameters.append((m, weight.flatten()))
     return parameters
