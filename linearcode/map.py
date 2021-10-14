@@ -53,4 +53,4 @@ with torch.no_grad():
                            'protection': [m.get_internal_log() for m in protection_modules],
                            'batch_size': BATCH_SIZE})
         print("Done with batch {} after injection".format(i))
-        extend(CONFIG, evaluation, {**DEFAULTS, 'injection': CONFIG['injection']})
+    extend(CONFIG, evaluation, {**DEFAULTS, 'injection': CONFIG['injection']})
