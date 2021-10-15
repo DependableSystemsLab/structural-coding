@@ -37,13 +37,9 @@ def inject_memory_fault(model, config):
                 parameter = next(pointer, None)
                 module = next(module_pointer, None)
             if config['quantization']:
-                scales = parameter.q_per_channel_scales()
-                zero_points = parameter.q_per_channel_scales()
-                axis = parameter.q_per_channel_axis()
-                int_repr = parameter.int_repr()
-                int_repr[parameter_index] = bitflip(int(int_repr[parameter_index]), bit_index % bit_width)
-                corrupted = torch._make_per_channel_quantized_tensor(int_repr, scales, zero_points, axis)
-                module.weight = corrupted
+                # parameter[parameter_index] / module.weight_fake_quantize.scale
+                # parameter[parameter_index] = bitflip(float(parameter[parameter_index]), bit_index % bit_width)
+                pass
             else:
                 parameter[parameter_index] = bitflip(float(parameter[parameter_index]), bit_index % bit_width)
 
@@ -54,8 +50,8 @@ def get_flattened_weights(model):
         if hasattr(m, 'weight') and type(m) in (
             torch.nn.Linear,
             torch.nn.Conv2d,
-            torch.nn.quantized.Linear,
-            torch.nn.quantized.Conv2d,
+            torch.nn.qat.Linear,
+            torch.nn.qat.Conv2d,
         ):
             weight = m.weight
             if callable(weight):
