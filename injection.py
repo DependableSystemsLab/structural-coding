@@ -51,12 +51,21 @@ def convert(module, mapping=None, in_place=False, injection_index=None, extra_kw
 def bitflip(f, pos):
     """ Single bit-flip in 32 bit floats """
 
-    f_ = pack('f', f)
-    b = list(unpack('BBBB', f_))
+    if isinstance(f, float):
+        n_bytes = 4
+        packing = 'f'
+    elif isinstance(f, int):
+        n_bytes = 1
+        packing = 'b'
+    else:
+        assert False
+
+    f_ = pack(packing, f)
+    b = list(unpack('B' * n_bytes, f_))
     [q, r] = divmod(pos, 8)
     b[q] ^= 1 << r
-    f_ = pack('BBBB', *b)
-    f = unpack('f', f_)
+    f_ = pack('B' * n_bytes, *b)
+    f = unpack(packing, f_)
     return f[0]
 
 

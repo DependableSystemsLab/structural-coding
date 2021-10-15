@@ -26,7 +26,7 @@ def inject_memory_fault(model, config):
     pointer = iter(parameters)
     module_pointer = iter(modules)
     parameter = next(pointer)
-    module = next(pointer)
+    module = next(module_pointer)
     offset = 0
     with torch.no_grad():
         for bit_index in sorted(bit_indices_to_flip):
@@ -36,7 +36,16 @@ def inject_memory_fault(model, config):
                 parameter_index -= len(parameter)
                 parameter = next(pointer, None)
                 module = next(module_pointer, None)
-            parameter[parameter_index] = bitflip(float(parameter[parameter_index]), bit_index % bit_width)
+            if config['quantization']:
+                scales = parameter.q_per_channel_scales()
+                zero_points = parameter.q_per_channel_scales()
+                axis = parameter.q_per_channel_axis()
+                int_repr = parameter.int_repr()
+                int_repr[parameter_index] = bitflip(int(int_repr[parameter_index]), bit_index % bit_width)
+                corrupted = torch._make_per_channel_quantized_tensor(int_repr, scales, zero_points, axis)
+                module.weight = corrupted
+            else:
+                parameter[parameter_index] = bitflip(float(parameter[parameter_index]), bit_index % bit_width)
 
 
 def get_flattened_weights(model):
