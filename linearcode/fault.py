@@ -37,9 +37,14 @@ def inject_memory_fault(model, config):
                 parameter = next(pointer, None)
                 module = next(module_pointer, None)
             if config['quantization']:
-                # parameter[parameter_index] / module.weight_fake_quantize.scale
-                # parameter[parameter_index] = bitflip(float(parameter[parameter_index]), bit_index % bit_width)
-                pass
+                repeat = parameter.shape[0] // module.weight_fake_quant.scale.flatten().shape[0]
+                scale = torch.repeat_interleave(module.weight_fake_quant.scale, repeat)[parameter_index]
+                zero_point = torch.repeat_interleave(module.weight_fake_quant.zero_point, repeat)[parameter_index]
+                quantized = torch.clamp(
+                    torch.round(parameter[parameter_index] / scale + zero_point),
+                    module.weight_fake_quant.quant_min,
+                    module.weight_fake_quant.quant_max)
+                parameter[parameter_index] = (bitflip(int(quantized), bit_index % bit_width) - zero_point) * scale
             else:
                 parameter[parameter_index] = bitflip(float(parameter[parameter_index]), bit_index % bit_width)
 
