@@ -1,5 +1,6 @@
 import numpy.random
 import torch
+import torch.nn.qat
 from torch.nn import Parameter
 
 from injection import bitflip
@@ -52,12 +53,12 @@ def inject_memory_fault(model, config):
 def get_flattened_weights(model):
     parameters = []
     for m in model.modules():
-        if hasattr(m, 'weight') and type(m) in (
+        if hasattr(m, 'weight') and any(map(lambda x: isinstance(m, x), (
             torch.nn.Linear,
             torch.nn.Conv2d,
             torch.nn.qat.Linear,
             torch.nn.qat.Conv2d,
-        ):
+        ))):
             weight = m.weight
             if callable(weight):
                 weight = weight()

@@ -5,12 +5,13 @@ from torch.nn import functional as F
 
 import torch.nn
 import torch.nn.quantized
+import torch.nn.qat
 from torch import Tensor
 from torch.nn import Module
 from torch.nn.common_types import _size_2_t
 
 from sc import StructuralCode, ErasureCode
-from utils import lcs, biggest_power_of_two, biggest_divisor_smaller_than
+from utils import lcs, biggest_power_of_two, biggest_divisor_smaller_than, quantize_tensor, radar_checksum
 
 
 def convert(module, mapping=None, in_place=False, injection_index=None, extra_kwargs=None):
@@ -24,7 +25,7 @@ def convert(module, mapping=None, in_place=False, injection_index=None, extra_kw
 
     reassign = {}
     for name, mod in module.named_children():
-        if list(mod.named_children()):
+        if list(mod.named_children()) and mod.__class__ not in mapping:
             convert(mod, mapping, True, injection_index, extra_kwargs)
             continue
         if mod.__class__ in mapping:
@@ -592,39 +593,49 @@ class TMRConv2d(torch.nn.Conv2d):
         return self._conv_forward(input, recovered, self.bias)
 
 
-class RADARLinear(torch.nn.quantized.Linear):
+class RADARLinear(torch.nn.qat.Linear):
 
-    def __init__(self, in_features: int, out_features: int, bias: bool = True) -> None:
-        super().__init__(in_features, out_features, bias)
+    def __init__(self, in_features, out_features, bias=True, qconfig=None):
+        super().__init__(in_features, out_features, bias, qconfig)
 
     @classmethod
-    def from_original(cls, original: torch.nn.quantized.Linear):
-        result = cls(original.in_features, original.out_features, original.bias is not None)
-        result.weight = original.weight
-        result.bias = original.bias
+    def from_original(cls, original: torch.nn.qat.Linear):
+        result = cls(original.in_features, original.out_features, original.bias is not None, original.qconfig)
+        result.weight_fake_quant = original.weight_fake_quant
+        result.activation_post_process = original.activation_post_process
+        result.load_state_dict(original.state_dict())
+        result.backup = original.weight.clone()
         return result
 
     def forward(self, input: Tensor) -> Tensor:
+        current_checksum = radar_checksum(quantize_tensor(self.weight, self.weight_fake_quant))
+        original_checksum = radar_checksum(quantize_tensor(self.backup, self.weight_fake_quant))
+        self.weight *= (original_checksum == current_checksum)
         return super().forward(input)
 
 
-class RADARConv2d(torch.nn.quantized.Conv2d):
+class RADARConv2d(torch.nn.qat.Conv2d):
 
-    def __init__(self, in_channels: int, out_channels: int, kernel_size: _size_2_t, stride: _size_2_t = 1,
-                 padding: _size_2_t = 0, dilation: _size_2_t = 1, groups: int = 1, bias: bool = True,
-                 padding_mode: str = 'zeros'):
-        super().__init__(in_channels, out_channels, kernel_size, stride, padding, dilation, groups, bias, padding_mode)
+    def __init__(self, in_channels, out_channels, kernel_size, stride=1, padding=0, dilation=1, groups=1, bias=True,
+                 padding_mode='zeros', qconfig=None):
+        super().__init__(in_channels, out_channels, kernel_size, stride, padding, dilation, groups, bias, padding_mode,
+                         qconfig)
 
     @classmethod
-    def from_original(cls, original: torch.nn.quantized.Conv2d):
+    def from_original(cls, original: torch.nn.qat.Conv2d):
         result = cls(original.in_channels, original.out_channels, original.kernel_size, original.stride,
                      original.padding, original.dilation, original.groups, original.bias is not None,
-                     original.padding_mode)
-        result.weight = original.weight
-        result.bias = original.bias
+                     original.padding_mode, original.qconfig)
+        result.weight_fake_quant = original.weight_fake_quant
+        result.activation_post_process = original.activation_post_process
+        result.load_state_dict(original.state_dict())
+        result.backup = original.weight.clone()
         return result
 
     def forward(self, input: Tensor) -> Tensor:
+        current_checksum = radar_checksum(quantize_tensor(self.weight, self.weight_fake_quant))
+        original_checksum = radar_checksum(quantize_tensor(self.backup, self.weight_fake_quant))
+        self.weight *= (original_checksum == current_checksum)
         return super().forward(input)
 
 

@@ -1,3 +1,6 @@
+import torch
+
+
 def lcs(X, Y):
     # find the length of the strings
     m = len(X)
@@ -35,3 +38,28 @@ def biggest_divisor_smaller_than(n, k):
         if n % i == 0:
             return i
     return 1
+
+
+def quantize_tensor(weight, fake_quant):
+    repeat = weight.flatten().shape[0] // fake_quant.scale.flatten().shape[0]
+    scale = torch.repeat_interleave(fake_quant.scale, repeat).reshape(weight.shape)
+    zero_point = torch.repeat_interleave(fake_quant.zero_point, repeat).reshape(weight.shape)
+    quantized = torch.clamp(
+        torch.round(
+            weight / scale + zero_point),
+        fake_quant.quant_min,
+        fake_quant.quant_max)
+    return quantized
+
+
+def dequantize_tensor(quantized, fake_quant):
+    repeat = quantized.flatten().shape[0] // fake_quant.scale.flatten().shape[0]
+    scale = torch.repeat_interleave(fake_quant.scale, repeat).reshape(quantized.shape)
+    zero_point = torch.repeat_interleave(fake_quant.zero_point, repeat).reshape(quantized.shape)
+    return (quantized - zero_point) * scale
+
+
+def radar_checksum(quantized):
+    unsigned = 256 * (quantized < 0) + quantized
+    checksum = unsigned // 256 * 2 + unsigned // 128 % 2
+    return checksum
