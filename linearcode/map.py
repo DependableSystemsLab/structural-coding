@@ -15,8 +15,6 @@ from linearcode.protection import PROTECTIONS
 from settings import BATCH_SIZE
 from storage import extend, load
 
-done_batches = set((e['config']['injection'], e['batch'], e['batch_size']) for e in load(CONFIG, {**DEFAULTS, 'injection': CONFIG['injection']}) or [])
-
 model_class = dict(MODEL_CLASSES)[CONFIG['model']]
 model = model_class(pretrained=True)
 
@@ -42,10 +40,6 @@ dataset = get_dataset(CONFIG)
 with torch.no_grad():
     evaluation = []
     for i, (x, y) in enumerate(dataset):
-        key = (CONFIG['injection'], i, BATCH_SIZE)
-        if key in done_batches:
-            print('Skipping batch {}.'.format(key), file=sys.stderr)
-            continue
         protection_modules = []
         for m in model.modules():
             if hasattr(m, 'reset_internal_log'):

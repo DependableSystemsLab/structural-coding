@@ -125,6 +125,9 @@ def get_dataset(config):
     if config['dataset'] == 'imagenet_ds':
         sampler = sorted(rnd.choice(range(50000), 10000, replace=False))
         return get_full_image_net(sampler, 'val')
+    if config['dataset'] == 'imagenet_ds_128':
+        sampler = sorted(rnd.choice(range(50000), 10000, replace=False)[:128])
+        return get_full_image_net(sampler, 'val')
     if config['dataset'] == 'imagenet':
         sampler = None
         if config['sampler'] == 'tiny':
