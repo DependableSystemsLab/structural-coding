@@ -1,4 +1,5 @@
 import os
+from copy import deepcopy
 from itertools import product
 
 from common.models import QUANTIZED_MODEL_CLASSES
@@ -24,16 +25,19 @@ DOMAIN = {
 
 # don't use short circuit execution here
 CONSTRAINTS = (
-    lambda c: c['sampler'] == 'none',
+    # lambda c: c['sampler'] == 'none',
     # lambda c: c['sampler'] == 'tiny',
-    lambda c: c['dataset'] == 'imagenet_ds',
-    # lambda c: c['dataset'] == 'imagenet',
+    # lambda c: c['sampler'] == 'critical',
+    # lambda c: c['dataset'] == 'imagenet_ds',
+    lambda c: c['dataset'] == 'imagenet',
     lambda c: any((c['flips'] != 0, all((c['injection'] == 0, c['protection'] == 'none')))),  # ensure baseline execution
-    lambda c: any((not c['quantization'], c['model'] in [name for name, clazz in QUANTIZED_MODEL_CLASSES])),
-    lambda c: c['protection'] in ('sc', 'none', 'clipper', 'tmr'),
+    lambda c: c['protection'] in ('sc', 'none', 'clipper', 'tmr', 'radar'),
     lambda c: c['flips'] < 1,
     lambda c: c['model'] != "e2e",
-    lambda c: not c['quantization'],
+    # lambda c: not c['quantization'],
+    lambda c: c['quantization'],
+    lambda c: c['model'] == 'resnet50',
+    lambda c: c['protection'] == 'radar',
 )
 #
 # CONSTRAINTS = (
@@ -50,10 +54,6 @@ DEFAULTS = {
     'quantization': False,
 }
 
-BASELINE_CONFIG = {k: DOMAIN[k][0] for k in DOMAIN}
-
-SLURM_ARRAY = []
-
 
 def get_constraint_keys(cstrnt):
     class GetItemObserver:
@@ -69,16 +69,29 @@ def get_constraint_keys(cstrnt):
     return observer.observed
 
 
-for constraint in CONSTRAINTS:
-    constraint_keys = get_constraint_keys(constraint)
-    if len(constraint_keys) == 1:
-        domain = next(iter(constraint_keys))
-        DOMAIN[domain] = tuple(v for v in DOMAIN[domain] if constraint({domain: v}))
+def constrain_domain(full_domain, constraints):
+    constrained_domain = deepcopy(full_domain)
+    for constraint in constraints:
+        constraint_keys = get_constraint_keys(constraint)
+        if len(constraint_keys) == 1:
+            domain = next(iter(constraint_keys))
+            constrained_domain[domain] = tuple(v for v in constrained_domain[domain] if constraint({domain: v}))
+    return constrained_domain
 
-for combination in product(*DOMAIN.values()):
-    c = {k: v for k, v in zip(DOMAIN.keys(), combination)}
-    if all(constraint(c) for constraint in CONSTRAINTS):
-        SLURM_ARRAY.append(c)
+
+def query_configs(constraints, domain=None):
+    if domain is None:
+        domain = DOMAIN
+    domain = constrain_domain(domain, constraints)
+    result = []
+    for combination in product(*domain.values()):
+        c = {k: v for k, v in zip(domain.keys(), combination)}
+        if all(constraint(c) for constraint in constraints):
+            result.append(c)
+    return result
+
+
+SLURM_ARRAY = query_configs(CONSTRAINTS)
 
 CONFIG = SLURM_ARRAY[int(os.environ.get('INTERNAL_SLURM_ARRAY_TASK_ID'))]
 
