@@ -1,14 +1,6 @@
 import os
 import pickle
 
-try:
-    from filelock.filelock import FileLock
-except (ImportError, ModuleNotFoundError):
-    from filelock import FileLock
-
-
-TIMEOUT = 300
-
 
 def get_storage_filename(key, defaults=None, extension='', storage=None):
     if defaults is None:
@@ -20,37 +12,38 @@ def get_storage_filename(key, defaults=None, extension='', storage=None):
     ) + extension)
 
 
-def store(key, value, defaults=None):
+def store(key, value, defaults=None, append=False):
+    mode = 'wb'
+    if append:
+        mode = 'ab'
     filename = get_storage_filename(key, defaults)
-    os.makedirs(os.path.dirname(filename), exist_ok=True)
-    with open(filename + '.tmp', mode='wb') as f:
+    os.makedirs(os.path.dirname(filename) + '.pkl', exist_ok=True)
+    with open(filename, mode=mode) as f:
         pickle.dump(value, f)
-    os.rename(filename + '.tmp', filename + '.pkl')
 
 
 def load(key, defaults=None, storage=None):
-    filename = get_storage_filename(key, defaults, storage=storage)
-    with FileLock(filename + '.lock', timeout=TIMEOUT):
-        return load_pickle(filename)
-
-
-def _load(key, defaults=None, storage=None):
     filename = get_storage_filename(key, defaults, storage=storage)
     return load_pickle(filename)
 
 
 def load_pickle(filename):
     try:
+        result = []
         with open(filename + '.pkl', mode='rb') as f:
-            return pickle.load(f)
+            try:
+                while True:
+                    result.append(pickle.load(f))
+            except EOFError:
+                return result
     except OSError:
         print("Error reading", filename)
         return None
 
 
 def extend(key, value, defaults):
-    filename = get_storage_filename(key, defaults)
-    with FileLock(filename + '.lock', timeout=TIMEOUT):
-        result = _load(key, defaults) or []
-        result.extend(value)
-        store(key, result, defaults)
+    store(key, value, defaults, True)
+
+
+if __name__ == '__main__':
+    print(len(load_pickle('linearcode/results/dataset:imagenet_ds_128-flips:2.160046875e-08-model:resnet50-protection:none')))
