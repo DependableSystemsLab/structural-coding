@@ -1,13 +1,14 @@
 import bisect
 import os.path
 from collections import defaultdict
+from copy import copy
 
 import matplotlib.pyplot as plt
 import torch
 
 from analysis import sdc, merge, detection, elapsed_time, sc_detection_hit_rate
 from linearcode.models import get_model
-from linearcode.parameters import SLURM_ARRAY, DEFAULTS, query_configs
+from linearcode.parameters import SLURM_ARRAY, DEFAULTS, query_configs, DOMAIN
 from storage import load, load_pickle, get_storage_filename
 
 
@@ -322,17 +323,35 @@ def draw_precision():
 
 
 def sdc_protection_scales_with_ber():
-    baseline_configs = query_configs((
-        lambda c: all((c['flips'] == 0, c['injection'] == 0, c['protection'] == 'none')),
+    base_query = (
         lambda c: c['dataset'] == 'imagenet_ds',
         lambda c: c['sampler'] == 'none',
         lambda c: not c['quantization'],
-        lambda c: all((os.path.exists(get_storage_filename({**DEFAULTS, 'injection': c['injection']})), c['model'] == c['model']))
+        lambda c: not c['model'] in ('e2e', 'vgg19'),
+    )
+    baseline_configs = query_configs(base_query + (
+        lambda c: all((c['flips'] == 0, c['injection'] == 0, c['protection'] == 'none')),
     ))
     for baseline_config in baseline_configs:
         data = load(baseline_config, {**DEFAULTS, 'injection': baseline_config['injection']})
-        print(baseline_config)
-        print(len(data))
+        batches = {}
+        for e in data:
+            batches[e['batch']] = e
+            if len(batches) == 625:
+                break
+        concise = [batches[i] for i in range(625)]
+        for protection in ('sc', 'clipper'):
+            for flips in DOMAIN['flips']:
+                if flips == 0:
+                    continue
+                config = copy(baseline_config)
+                config['flips'] = flips
+                config['protection'] = protection
+                data = load(config, {**DEFAULTS, 'injection': config['injection']})
+                if data:
+                    data = [e for e in data if isinstance(e, dict)]
+                    if data:
+                        print(sdc(concise, data))
 
 
 sdc_protection_scales_with_ber()
