@@ -1,4 +1,5 @@
 import bisect
+import os.path
 from collections import defaultdict
 
 import matplotlib.pyplot as plt
@@ -6,8 +7,8 @@ import torch
 
 from analysis import sdc, merge, detection, elapsed_time, sc_detection_hit_rate
 from linearcode.models import get_model
-from linearcode.parameters import SLURM_ARRAY, DEFAULTS
-from storage import load, load_pickle
+from linearcode.parameters import SLURM_ARRAY, DEFAULTS, query_configs
+from storage import load, load_pickle, get_storage_filename
 
 
 def draw_sdc(partial=True):
@@ -290,7 +291,7 @@ def draw_precision():
 
 # draw_sdc(partial=True)
 # draw_metric(partial=True, metric_function=elapsed_time)
-draw_metric(partial=True, metric_function=sc_detection_hit_rate)
+# draw_metric(partial=True, metric_function=sc_detection_hit_rate)
 
 
 # data = [(
@@ -318,3 +319,20 @@ draw_metric(partial=True, metric_function=sc_detection_hit_rate)
 # plt.title('DUE vs SDC')
 # plt.xlabel('# of bit flips')
 # plt.show()
+
+
+def sdc_protection_scales_with_ber():
+    baseline_configs = query_configs((
+        lambda c: all((c['flips'] == 0, c['injection'] == 0, c['protection'] == 'none')),
+        lambda c: c['dataset'] == 'imagenet_ds',
+        lambda c: c['sampler'] == 'none',
+        lambda c: not c['quantization'],
+        lambda c: all((os.path.exists(get_storage_filename({**DEFAULTS, 'injection': c['injection']})), c['model'] == c['model']))
+    ))
+    for baseline_config in baseline_configs:
+        data = load(baseline_config, {**DEFAULTS, 'injection': baseline_config['injection']})
+        print(baseline_config)
+        print(len(data))
+
+
+sdc_protection_scales_with_ber()
