@@ -17,7 +17,7 @@ def store(key, value, defaults=None, append=False):
     if append:
         mode = 'ab'
     filename = get_storage_filename(key, defaults)
-    os.makedirs(os.path.dirname(filename) + '.pkl', exist_ok=True)
+    os.makedirs(os.path.dirname(filename), exist_ok=True)
     with open(filename, mode=mode) as f:
         pickle.dump(value, f)
 
@@ -30,14 +30,14 @@ def load(key, defaults=None, storage=None):
 def load_pickle(filename):
     try:
         result = []
-        with open(filename + '.pkl', mode='rb') as f:
+        with open(filename, mode='rb') as f:
             try:
                 while True:
                     result.append(pickle.load(f))
             except EOFError:
                 return result
-    except OSError:
-        print("Error reading", filename)
+    except OSError as ex:
+        print("Error reading", ex, filename)
         return None
 
 

@@ -324,9 +324,10 @@ def draw_precision():
 
 def sdc_protection_scales_with_ber():
     base_query = (
-        lambda c: c['dataset'] == 'imagenet_ds',
+        lambda c: c['dataset'] == 'imagenet_ds_128',
         lambda c: c['sampler'] == 'none',
         lambda c: not c['quantization'],
+        lambda c: c['flips'] < 1,
         lambda c: not c['model'] in ('e2e', 'vgg19'),
     )
     baseline_configs = query_configs(base_query + (
@@ -334,24 +335,20 @@ def sdc_protection_scales_with_ber():
     ))
     for baseline_config in baseline_configs:
         data = load(baseline_config, {**DEFAULTS, 'injection': baseline_config['injection']})
-        batches = {}
-        for e in data:
-            batches[e['batch']] = e
-            if len(batches) == 625:
-                break
-        concise = [batches[i] for i in range(625)]
-        for protection in ('sc', 'clipper'):
+        baseline = data[0]
+        for protection in ('sc', 'clipper', 'none', 'tmr'):
             for flips in DOMAIN['flips']:
-                if flips == 0:
+                if flips == 0 or flips >= 1:
                     continue
                 config = copy(baseline_config)
                 config['flips'] = flips
                 config['protection'] = protection
                 data = load(config, {**DEFAULTS, 'injection': config['injection']})
                 if data:
-                    data = [e for e in data if isinstance(e, dict)]
-                    if data:
-                        print(sdc(concise, data))
+                    concat_data = []
+                    for e in data:
+                        concat_data.extend(e)
+                    print(config, sdc(baseline, concat_data))
 
 
 sdc_protection_scales_with_ber()
