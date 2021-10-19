@@ -35,9 +35,9 @@ CONSTRAINTS = (
     lambda c: not c['quantization'],
 
     # this
-    # lambda c: c['model'] == 'resnet50',
-    # lambda c: c['protection'] == 'none',
-    # lambda c: c['flips'] == 0.00000552972 * 0.5 ** 8,
+    # lambda c: c['model'] == 'shufflenet',
+    # lambda c: c['protection'] == 'sc',
+    # lambda c: c['flips'] == 0.00000552972,
 )
 #
 # CONSTRAINTS = (

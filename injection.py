@@ -477,7 +477,7 @@ class NormalizedConv2d(torch.nn.Module):
                 end = start + division_in_channels
                 weights = original.weight[group_base_index: group_base_index + group_out_channels, start: end]
                 if original.bias is not None:
-                    convolution.bias = original.bias
+                    convolution.bias = torch.nn.Parameter(original.bias[group_base_index: group_base_index + group_out_channels] / divisions)
                 convolution.weight = torch.nn.Parameter(weights)
                 self.__setattr__('conv_{}_{}'.format(i, j), convolution)
 
@@ -515,15 +515,15 @@ class NormalizedLinear(torch.nn.Module):
         division_in_features = original.in_features // divisions
         self.division_in_features = division_in_features
         for j in range(self.divisions):
-            convolution = torch.nn.Linear(division_in_features, original.out_features, original.bias is not None)
+            linear = torch.nn.Linear(division_in_features, original.out_features, original.bias is not None)
             division_base_index = j * division_in_features
             start = division_base_index
             end = start + division_in_features
             weights = original.weight[:, start: end]
             if original.bias is not None:
-                convolution.bias = original.bias
-            convolution.weight = torch.nn.Parameter(weights)
-            self.__setattr__('linear_{}'.format(j), convolution)
+                linear.bias = torch.nn.Parameter(original.bias / divisions)
+            linear.weight = torch.nn.Parameter(weights)
+            self.__setattr__('linear_{}'.format(j), linear)
 
     def forward(self, input: Tensor) -> Tensor:
         division_result = None
