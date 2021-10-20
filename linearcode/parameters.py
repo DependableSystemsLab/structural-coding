@@ -34,8 +34,8 @@ CONSTRAINTS = (
     lambda c: c['model'] not in ("e2e", 'vgg19'),
     lambda c: not c['quantization'],
 
-    lambda c: c['protection'] == 'sc',
-    lambda c: c['model'] == 'resnet50',
+    # retry
+    lambda c: c['protection'] in ('sc', 'tmr'),
 
     # this
     # lambda c: c['model'] == 'shufflenet',

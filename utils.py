@@ -1,4 +1,7 @@
+import ctypes
+
 import torch
+from torch import Tensor
 
 
 def lcs(X, Y):
@@ -63,3 +66,28 @@ def radar_checksum(quantized):
     unsigned = 256 * (quantized < 0) + quantized
     checksum = unsigned // 256 * 2 + unsigned // 128 % 2
     return checksum
+
+
+def bit_tmr(param, param1, param2):
+    return ((~((param ^ param1) | 256)) & param1) | ((param ^ param1) & param2)
+
+
+def recover_with_tmr(weight: Tensor):
+    original_size = weight.shape[0] // 3
+    first, second, third = (
+        weight[:original_size],
+        weight[original_size: 2 * original_size],
+        weight[original_size * 2:]
+    )
+    number_of_bytes = first.nelement() * first.element_size()
+    result = first.clone()
+    first_bytes, second_bytes, third_bytes, result_bytes = (
+        (ctypes.c_ubyte * number_of_bytes).from_address(first.data_ptr()),
+        (ctypes.c_ubyte * number_of_bytes).from_address(second.data_ptr()),
+        (ctypes.c_ubyte * number_of_bytes).from_address(third.data_ptr()),
+        (ctypes.c_ubyte * number_of_bytes).from_address(result.data_ptr()),
+    )
+    for i in range(number_of_bytes):
+        result_bytes[i] = bit_tmr(first_bytes[i], second_bytes[i], third_bytes[i])
+    return result
+

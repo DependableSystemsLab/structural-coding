@@ -11,7 +11,8 @@ from torch.nn import Module
 from torch.nn.common_types import _size_2_t
 
 from sc import StructuralCode, ErasureCode
-from utils import lcs, biggest_power_of_two, biggest_divisor_smaller_than, quantize_tensor, radar_checksum
+from utils import lcs, biggest_power_of_two, biggest_divisor_smaller_than, quantize_tensor, radar_checksum, \
+    recover_with_tmr
 
 
 def convert(module, mapping=None, in_place=False, injection_index=None, extra_kwargs=None):
@@ -552,17 +553,12 @@ class TMRLinear(torch.nn.Linear):
     def from_original(cls, original: torch.nn.Linear):
         result = cls(original.in_features, original.out_features, original.bias is not None)
         result.weight = torch.nn.Parameter(torch.cat((original.weight, ) * 3))
+        assert torch.all(recover_with_tmr(result.weight) == original.weight)
         result.bias = original.bias
         return result
 
     def forward(self, input: Tensor) -> Tensor:
-        original_size = self.weight.shape[0] // 3
-        first, second, third = (
-            self.weight[:original_size],
-            self.weight[original_size: 2 * original_size],
-            self.weight[original_size * 2:]
-        )
-        recovered = (first != second) * third + first * (first == second)
+        recovered = recover_with_tmr(self.weight)
         return F.linear(input, recovered, self.bias)
 
 
@@ -579,17 +575,12 @@ class TMRConv2d(torch.nn.Conv2d):
                      original.padding, original.dilation, original.groups, original.bias is not None,
                      original.padding_mode)
         result.weight = torch.nn.Parameter(torch.cat((original.weight,) * 3))
+        assert torch.all(recover_with_tmr(result.weight) == original.weight)
         result.bias = original.bias
         return result
 
     def forward(self, input: Tensor) -> Tensor:
-        original_size = self.weight.shape[0] // 3
-        first, second, third = (
-            self.weight[:original_size],
-            self.weight[original_size: 2 * original_size],
-            self.weight[original_size * 2:]
-        )
-        recovered = (first != second) * third + first * (first == second)
+        recovered = recover_with_tmr(self.weight)
         return self._conv_forward(input, recovered, self.bias)
 
 
