@@ -1,15 +1,17 @@
 import bisect
-import os.path
 from collections import defaultdict
 from copy import copy
 
 import matplotlib.pyplot as plt
 import torch
 
-from analysis import sdc, merge, detection, elapsed_time, sc_detection_hit_rate
+from analysis import sdc, merge
+from common.models import MODEL_CLASSES
+from linearcode.fault import inject_memory_fault, get_target_modules
 from linearcode.models import get_model
 from linearcode.parameters import SLURM_ARRAY, DEFAULTS, query_configs, DOMAIN
-from storage import load, load_pickle, get_storage_filename
+from linearcode.protection import PROTECTIONS
+from storage import load, load_pickle
 
 
 def draw_sdc(partial=True):
@@ -336,8 +338,10 @@ def sdc_protection_scales_with_ber():
     for baseline_config in baseline_configs:
         data = load(baseline_config, {**DEFAULTS, 'injection': baseline_config['injection']})
         baseline = data[0]
-        for protection in ('sc', 'clipper', 'none', 'tmr'):
-            for flips in DOMAIN['flips']:
+        print(baseline_config['model'])
+        for flips in DOMAIN['flips']:
+            print(flips, end=',')
+            for protection in ('sc', 'clipper', 'none', 'tmr'):
                 if flips == 0 or flips >= 1:
                     continue
                 config = copy(baseline_config)
@@ -348,7 +352,58 @@ def sdc_protection_scales_with_ber():
                     concat_data = []
                     for e in data:
                         concat_data.extend(e)
-                    print(config, sdc(baseline, concat_data))
+                    print(sdc(baseline, concat_data)[0], end=',')
+            print()
 
 
-sdc_protection_scales_with_ber()
+def demonstrate_tmr_failure():
+    base_query = (
+        lambda c: c['dataset'] == 'imagenet_ds_128',
+        lambda c: c['sampler'] == 'none',
+        lambda c: not c['quantization'],
+        lambda c: c['flips'] < 1,
+        lambda c: not c['model'] in ('e2e', 'vgg19'),
+    )
+    baseline_configs = query_configs(base_query + (
+        lambda c: all((c['flips'] == 0, c['injection'] == 0, c['protection'] == 'none')),
+        lambda c: c['model'] == 'resnet50',
+    ))
+    baseline_config = query_configs(base_query + (
+        lambda c: all((c['flips'] == 0, c['injection'] == 0, c['protection'] == 'none')),
+        lambda c: c['model'] == 'resnet50',
+    ))[0]
+    data = load(baseline_config, {**DEFAULTS, 'injection': baseline_config['injection']})
+    baseline = data[0]
+    data = load({**baseline_config,
+                 'protection': 'tmr',
+                 'flips': 0.00000552972}, {**DEFAULTS, 'injection': baseline_config['injection']})
+    for datum in data:
+        sdc_value = sdc(baseline, datum)[0]
+        if sdc_value > 0:
+            print(datum[0]['config'], sdc_value)
+            model_class = dict(MODEL_CLASSES)['resnet50']
+            model = model_class(pretrained=True)
+
+            #  protect model
+            model = PROTECTIONS['tmr'](model, datum[0]['config'])
+            model.eval()
+
+            # corrupt model
+            # original_weights = [m.weight.clone() for m in get_target_modules(model)]
+            bit_indices_to_flip, size = inject_memory_fault(model, datum[0]['config'])
+            p = datum[0]['config']['flips']
+            probability_of_two_in_same_index = (3 * (1 - p) * p ** 2)
+            print('Model bit size', size)
+            print('Probability of not seeing this', (1 - probability_of_two_in_same_index) ** (400 * size // 3))
+            sizes = [m.weight.nelement() * m.weight.element_size() * 8 for m in get_target_modules(model)]
+            while bit_indices_to_flip:
+                first_param_indices = [i for i in bit_indices_to_flip if i < sizes[0]]
+                bit_indices_to_flip = [i - sizes[0] for i in bit_indices_to_flip if i >= sizes[0]]
+                injections = len(set(first_param_indices))
+                distinct_injections = len(set(i % (sizes[0] // 3) for i in first_param_indices))
+                if injections != distinct_injections:
+                    print('yo', injections, distinct_injections)
+                sizes = sizes[1:]
+
+
+demonstrate_tmr_failure()

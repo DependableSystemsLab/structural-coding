@@ -1,7 +1,6 @@
 import numpy.random
 import torch
 import torch.nn.qat
-from torch.nn import Parameter
 
 from injection import bitflip
 
@@ -48,19 +47,28 @@ def inject_memory_fault(model, config):
                 parameter[parameter_index] = (bitflip(int(quantized), bit_index % bit_width) - zero_point) * scale
             else:
                 parameter[parameter_index] = bitflip(float(parameter[parameter_index]), bit_index % bit_width)
+    return bit_indices_to_flip, size
 
 
 def get_flattened_weights(model):
     parameters = []
-    for m in model.modules():
-        if hasattr(m, 'weight') and any(map(lambda x: isinstance(m, x), (
-            torch.nn.Linear,
-            torch.nn.Conv2d,
-            torch.nn.qat.Linear,
-            torch.nn.qat.Conv2d,
-        ))):
+    for m in get_target_modules(model):
+
             weight = m.weight
             if callable(weight):
                 weight = weight()
             parameters.append((m, weight.flatten()))
     return parameters
+
+
+def get_target_modules(model):
+    modules = []
+    for m in model.modules():
+        if hasattr(m, 'weight') and any(map(lambda x: isinstance(m, x), (
+                torch.nn.Linear,
+                torch.nn.Conv2d,
+                torch.nn.qat.Linear,
+                torch.nn.qat.Conv2d,
+        ))):
+            modules.append(m)
+    return modules
