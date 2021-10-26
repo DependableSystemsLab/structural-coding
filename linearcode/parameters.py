@@ -29,13 +29,15 @@ CONSTRAINTS = (
     lambda c: c['dataset'] == 'imagenet_ds_128',
     lambda c: c['sampler'] == 'none',
     lambda c: any((c['flips'] != 0, all((c['injection'] == 0, c['protection'] == 'none')))),  # ensure baseline execution
-    lambda c: c['protection'] in ('sc', 'none', 'clipper', 'tmr'),
+    lambda c: c['protection'] in ('sc', 'none', 'clipper', 'tmr', 'radar'),
     lambda c: c['flips'] < 1,
     lambda c: c['model'] not in ("e2e", 'vgg19'),
-    lambda c: not c['quantization'],
+    # lambda c: not c['quantization'],
+    lambda c: c['quantization'],
 
-    # retry
-    lambda c: c['protection'] in ('sc', 'tmr'),
+    # test quantized
+    lambda c: c['protection'] in ('sc', 'radar', 'none'),
+    lambda c: c['injection'] < 2,
 
     # this
     # lambda c: c['model'] == 'shufflenet',

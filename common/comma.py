@@ -9,8 +9,10 @@ import json
 import os
 
 import torch
-from keras.models import model_from_json
+import torchvision
 import torch.nn as nn
+from torchvision import transforms
+
 
 from settings import COMMA_MODEL_ROOT
 
@@ -33,9 +35,9 @@ class Comma(nn.Module):
 
         self.elu = nn.ELU()
 
-        self.conv_0 = nn.Conv2d(3, 16, 8, 4, padding="same")
-        self.conv_1 = nn.Conv2d(16, 32, 5, 2, padding="same")
-        self.conv_2 = nn.Conv2d(32, 64, 5, 2, padding="same")  # 384 kernels, size 3x3
+        self.conv_0 = nn.Conv2d(3, 16, (8, 8), (4, 4), padding="same")
+        self.conv_1 = nn.Conv2d(16, 32, (5, 5), (2, 2), padding="same")
+        self.conv_2 = nn.Conv2d(32, 64, (5, 5), (2, 2), padding="same")
 
         self.fc0 = nn.Linear(12800, 512)
         self.fc1 = nn.Linear(512, 1)
@@ -68,18 +70,20 @@ class Comma(nn.Module):
         x = self.elu(self.conv_0(x))
         x = self.elu(self.conv_1(x))
         x = self.elu(self.conv_2(x))
-        x = self.elu(self.conv_3(x))
-        x = self.elu(self.conv_4(x))
-        x = self.dropout(x)
 
         x = x.flatten()
         x = self.elu(self.fc0(x))
-        x = self.elu(self.fc1(x))
-        x = self.elu(self.fc2(x))
-        x = self.fc3(x)
+        x = self.fc1(x)
 
         return x
 
 
 if __name__ == '__main__':
-    Comma(pretrained=True)
+    transform = transforms.Compose([
+        transforms.Resize((320, 160)),
+        transforms.ToTensor()
+        ])
+    sample = torch.stack((transform(torchvision.datasets.folder.default_loader('../../Ranger/demo/sample_inputs/1000.jpg')),))
+    print(sample.shape)
+    model = Comma(pretrained=True)
+    print(model(sample))
