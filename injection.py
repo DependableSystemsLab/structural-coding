@@ -298,8 +298,7 @@ class QStructuralCodedConv2d(torch.nn.qat.Conv2d):
         instance.simple_checksum = instance.ec.checksum(instance.simple_checksum_tensors)
 
         instance.weight_fake_quant.scale = torch.nn.Parameter(
-                torch.cat((instance.weight_fake_quant.scale,
-                          torch.max(instance.weight_fake_quant.scale) * torch.ones(instance.weight.shape[0] - instance.weight_fake_quant.scale.shape[0]))), False)
+            torch.amax(torch.abs(instance.weight), dim=(1, 2, 3)) / 127, False)
         assert torch.max(torch.abs(instance.weight_fake_quant.zero_point)) == 0
         instance.weight_fake_quant.zero_point = torch.nn.Parameter(torch.zeros(instance.weight.shape[0],dtype=instance.weight_fake_quant.zero_point.dtype), False)
 
@@ -401,8 +400,7 @@ class QStructuralCodedLinear(torch.nn.qat.Linear):
         instance.simple_checksum = instance.ec.checksum(instance.simple_checksum_tensors)
 
         instance.weight_fake_quant.scale = torch.nn.Parameter(
-                torch.cat((instance.weight_fake_quant.scale,
-                          torch.max(instance.weight_fake_quant.scale) * torch.ones(instance.weight.shape[0] - instance.weight_fake_quant.scale.shape[0]))), False)
+            torch.amax(torch.abs(instance.weight), dim=(1, 2, 3)) / 127, False)
         assert torch.max(torch.abs(instance.weight_fake_quant.zero_point)) == 0
         instance.weight_fake_quant.zero_point = torch.nn.Parameter(torch.zeros(instance.weight.shape[0],dtype=instance.weight_fake_quant.zero_point.dtype), False)
 

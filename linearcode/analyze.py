@@ -406,4 +406,26 @@ def demonstrate_tmr_failure():
                 sizes = sizes[1:]
 
 
-demonstrate_tmr_failure()
+def demonstrate_quantization_accuracy():
+    baseline_constraints = (
+        lambda c: c['dataset'] == 'imagenet_ds_128',
+        lambda c: c['sampler'] == 'none',
+        lambda c: c['quantization'],
+        lambda c: not c['model'] in ('e2e', 'vgg19'),
+        lambda c: c['protection'] == 'none',
+        lambda c: all((c['flips'] == 0, c['injection'] == 0, c['protection'] == 'none')),
+    )
+    baseline_configs = query_configs(baseline_constraints)
+    for baseline_config in baseline_configs:
+        baseline_config['protection'] = 'sc'
+        baseline_config['model'] = 'resnet50'
+        baseline_config['flips'] = 0
+        data = load(baseline_config, {**DEFAULTS, 'injection': baseline_config['injection']})
+        unrolled = []
+        for d in data:
+            unrolled.extend(d)
+        unrolled = merge(unrolled)
+        print(baseline_config['model'], torch.sum(unrolled[0] == unrolled[1]) / unrolled[0].nelement())
+
+
+demonstrate_quantization_accuracy()
