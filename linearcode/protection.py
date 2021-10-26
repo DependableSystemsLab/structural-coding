@@ -1,21 +1,28 @@
 import torch
 
 from injection import convert, ClipperReLU, ClipperHardswish, StructuralCodedConv2d, StructuralCodedLinear, \
-    NormalizedConv2d, NormalizedLinear, TMRLinear, TMRConv2d, RADARConv2d, RADARLinear
+    NormalizedConv2d, NormalizedLinear, TMRLinear, TMRConv2d, RADARConv2d, RADARLinear, QStructuralCodedConv2d, \
+    QStructuralCodedLinear
 
 
 def apply_sc(model, config):
     model, _ = convert(model, mapping={
-        torch.nn.Conv2d: NormalizedConv2d,
-        torch.nn.Linear: NormalizedLinear,
-    })
-    model, _ = convert(model, mapping={
         torch.nn.Conv2d: StructuralCodedConv2d,
+        torch.nn.qat.Conv2d: QStructuralCodedConv2d,
         torch.nn.Linear: StructuralCodedLinear,
+        torch.nn.qat.Linear: QStructuralCodedLinear,
     }, in_place=True, extra_kwargs={
         'k': 32,
         'threshold': 1,
         'n': 256
+    })
+    return model
+
+
+def normalize_model(model, _):
+    model, _ = convert(model, mapping={
+        torch.nn.Conv2d: NormalizedConv2d,
+        torch.nn.Linear: NormalizedLinear,
     })
     return model
 
@@ -55,10 +62,15 @@ def apply_clipper(model, config):
             relu_counter += 1
     return model
 
+
 PROTECTIONS = {
-    'none': lambda x, config: x,
-    'sc': apply_sc,
-    'clipper': apply_clipper,
-    'tmr': apply_tmr,
-    'radar': apply_radar,
+    'before_quantization': {
+        'sc': normalize_model,
+        'clipper': apply_clipper,
+        'tmr': apply_tmr,
+    },
+    'after_quantization': {
+        'radar': apply_radar,
+        'sc': apply_sc,
+    }
 }

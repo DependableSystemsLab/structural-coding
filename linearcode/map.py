@@ -5,27 +5,34 @@ import sys
 import time
 
 import torch
-import torchvision.models.quantization.utils
 
-from common.models import MODEL_CLASSES, QUANTIZED_MODEL_CLASSES
+from common.models import MODEL_CLASSES
 from datasets import get_dataset
 from linearcode.fault import inject_memory_fault
 from linearcode.parameters import CONFIG, DEFAULTS
 from linearcode.protection import PROTECTIONS
 from settings import BATCH_SIZE
-from storage import extend, load
+from storage import extend
 
 model_class = dict(MODEL_CLASSES)[CONFIG['model']]
 model = model_class(pretrained=True)
 
+#  protect model
+model = PROTECTIONS['before_quantization'].get(CONFIG['protection'], lambda t, _: t)(model, CONFIG)
+
 if CONFIG['quantization']:
     model.qconfig = torch.quantization.get_default_qat_qconfig('fbgemm')
     torch.quantization.prepare_qat(model, inplace=True)
-    quantization_state_dict = torch.load('quants/' + CONFIG['model'] + '.pth')
+    quantization_state_filename = CONFIG['model']
+    if CONFIG['protection'] == 'sc':
+        quantization_state_filename = 'normalized_' + quantization_state_filename
+    quantization_state_dict = torch.load('quants/' + quantization_state_filename + '.pth')
     model.load_state_dict(quantization_state_dict, False)
 
+
 #  protect model
-model = PROTECTIONS[CONFIG['protection']](model, CONFIG)
+model = PROTECTIONS['after_quantization'].get(CONFIG['protection'], lambda t, _: t)(model, CONFIG)
+
 model.eval()
 if CONFIG['quantization']:
     model.apply(torch.quantization.disable_observer)
