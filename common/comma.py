@@ -29,51 +29,41 @@ class Comma(nn.Module):
     * @param None.
     * @return None.
     """
-
-    def __init__(self, pretrained=False):
+    def __init__(self):
         super().__init__()
 
         self.elu = nn.ELU()
+        self.dropout = nn.Dropout()
 
-        self.conv_0 = nn.Conv2d(3, 16, (8, 8), (4, 4), padding="same")
-        self.conv_1 = nn.Conv2d(16, 32, (5, 5), (2, 2), padding="same")
-        self.conv_2 = nn.Conv2d(32, 64, (5, 5), (2, 2), padding="same")
+        self.conv_0 = nn.Conv2d(3, 24, 5, stride=2)
+        self.conv_1 = nn.Conv2d(24, 36, kernel_size=5, stride=2)
+        self.conv_2 = nn.Conv2d(36, 48, kernel_size=5, stride=2) #384 kernels, size 3x3
+        self.conv_3 = nn.Conv2d(48, 64, kernel_size=3) # 384 kernels size 3x3
+        self.conv_4 = nn.Conv2d(64, 64, kernel_size=3) # 256 kernels, size 3x3
 
-        self.fc0 = nn.Linear(12800, 512)
-        self.fc1 = nn.Linear(512, 1)
-
-        if pretrained:
-            # weights = json.load(open('../../research/weights.json'))
-            # self.conv_0.weight = nn.Parameter(torch.FloatTensor(weights[0]))
-            # self.conv_0.bias = nn.Parameter(torch.FloatTensor(weights[1]))
-            # self.conv_1.weight = nn.Parameter(torch.FloatTensor(weights[2]))
-            # self.conv_1.bias = nn.Parameter(torch.FloatTensor(weights[3]))
-            # self.conv_2.weight = nn.Parameter(torch.FloatTensor(weights[4]))
-            # self.conv_2.bias = nn.Parameter(torch.FloatTensor(weights[5]))
-            # self.fc0.weight = nn.Parameter(torch.FloatTensor(weights[6]).transpose(0, 1))
-            # self.fc0.bias = nn.Parameter(torch.FloatTensor(weights[7]))
-            # self.fc1.weight = nn.Parameter(torch.FloatTensor(weights[8]).transpose(0, 1))
-            # self.fc1.bias = nn.Parameter(torch.FloatTensor(weights[9]))
-            # for i, j in self.state_dict().items():
-            #     print(i, j.shape)
-            # torch.save(self.state_dict(), 'comma/steering_angle.pth')
-            self.load_state_dict(torch.load('comma/steering_angle.pth'))
-
+        self.fc0 = nn.Linear(1152, 100)
+        self.fc1 = nn.Linear(100,50)
+        self.fc2 = nn.Linear(50, 10)
+        self.fc3 = nn.Linear(10, 1)
     """ 
     * @brief Function to build the model.
     * @parma The image to train.
     * @return The trained prediction network.
     """
-
     def forward(self, x):
         x = x / 127.5 - 1.0
         x = self.elu(self.conv_0(x))
         x = self.elu(self.conv_1(x))
         x = self.elu(self.conv_2(x))
+        x = self.elu(self.conv_3(x))
+        x = self.elu(self.conv_4(x))
+        x = self.dropout(x)
 
         x = x.flatten()
         x = self.elu(self.fc0(x))
-        x = self.fc1(x)
+        x = self.elu(self.fc1(x))
+        x = self.elu(self.fc2(x))
+        x = self.fc3(x)
 
         return x
 
