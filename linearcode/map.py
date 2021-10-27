@@ -6,7 +6,7 @@ import time
 
 import torch
 
-from common.models import MODEL_CLASSES
+from common.models import MODEL_CLASSES, LOSS_CLASSES
 from datasets import get_dataset
 from linearcode.fault import inject_memory_fault
 from linearcode.parameters import CONFIG, DEFAULTS
@@ -15,6 +15,8 @@ from settings import BATCH_SIZE
 from storage import extend
 
 model_class = dict(MODEL_CLASSES)[CONFIG['model']]
+loss_class = dict(LOSS_CLASSES)[CONFIG['model']]
+loss_function = loss_class()
 model = model_class(pretrained=True)
 
 #  protect model
@@ -54,12 +56,14 @@ with torch.no_grad():
                 protection_modules.append(m)
         start_time = time.time()
         model_output = model(x)
+        loss = loss_function(model_output, y)
         indices = torch.topk(model_output, k=5).indices
         end_time = time.time()
         evaluation.append({'top5': indices,
                            'label': y,
                            'batch': i,
                            'config': CONFIG,
+                           'loss': loss,
                            'elapsed_time': end_time - start_time,
                            'protection': [m.get_internal_log() for m in protection_modules],
                            'batch_size': BATCH_SIZE})
