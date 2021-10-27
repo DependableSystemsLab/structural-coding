@@ -2,6 +2,7 @@ import os
 from copy import deepcopy
 from itertools import product
 
+from settings import PROBABILITIES
 
 DOMAIN = {
     'injection': range(400),
@@ -16,19 +17,22 @@ DOMAIN = {
                 'imagenet_ds_128',
                 'comma.ai', 'commaai_test'),
     'flips': (1, 2, 4, 8, 16, 32,
-              0.00000552972,
-              0.00000552972 * 0.5 ** 2,
-              0.00000552972 * 0.5 ** 4,
-              0.00000552972 * 0.5 ** 6,
-              0.00000552972 * 0.5 ** 8,
-              0)
+              0,
+              *PROBABILITIES,
+              'word',
+              'column',
+              'row',
+              'bank',
+              'chip',
+              'rowhammer-0.0003')
 }
 
 # don't use short circuit execution here
 CONSTRAINTS = (
     lambda c: c['dataset'] == 'imagenet_ds_128',
     lambda c: c['sampler'] == 'none',
-    lambda c: any((c['flips'] != 0, all((c['injection'] == 0, c['protection'] == 'none')))),  # ensure baseline execution
+    lambda c: any((c['flips'] != 0, all((c['injection'] == 0, c['protection'] == 'none')))),
+    # ensure baseline execution
     lambda c: c['protection'] in ('sc', 'none', 'clipper', 'tmr', 'radar'),
     lambda c: c['flips'] < 1,
     lambda c: c['model'] not in ("e2e", 'vgg19'),
