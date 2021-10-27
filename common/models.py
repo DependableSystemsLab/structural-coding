@@ -118,10 +118,14 @@ MODEL_CLASSES = (
     ('shufflenet', torchvision.models.shufflenet_v2_x0_5),
 )
 
-QUANTIZED_MODEL_CLASSES = (
-    ('mobilenet', torchvision.models.quantization.mobilenet_v3_large),
-    ('googlenet', torchvision.models.quantization.googlenet),
+LOSS_CLASSES = (
+    ('alexnet', nn.CrossEntropyLoss),
+    ('squeezenet', nn.CrossEntropyLoss),
     # big memory requirement
-    ('resnet50', torchvision.models.quantization.resnet50),
-    ('shufflenet', torchvision.models.quantization.shufflenet_v2_x0_5),
+    ('vgg19', nn.CrossEntropyLoss),
+    ('mobilenet', nn.CrossEntropyLoss),
+    ('googlenet', nn.CrossEntropyLoss),
+    # big memory requirement
+    ('resnet50', nn.CrossEntropyLoss),
+    ('shufflenet', nn.CrossEntropyLoss),
 )
