@@ -428,4 +428,40 @@ def demonstrate_quantization_accuracy():
         print(baseline_config['model'], torch.sum(unrolled[0] == unrolled[1]) / unrolled[0].nelement())
 
 
-demonstrate_quantization_accuracy()
+def sdc_protection_scales_with_granularity():
+    base_query = (
+        lambda c: c['dataset'] == 'imagenet_ds_128',
+        lambda c: c['sampler'] == 'none',
+        lambda c: not c['quantization'],
+        lambda c: isinstance(c['flips'], str) or c['flips'] == 0,
+        lambda c: not c['model'] in ('e2e', 'vgg19'),
+        lambda c: c['model'] in ("alexnet", 'mobilenet'),
+    )
+    baseline_configs = query_configs(base_query + (
+        lambda c: all((c['flips'] == 0, c['injection'] == 0, c['protection'] == 'none')),
+    ))
+    for baseline_config in baseline_configs:
+        data = load(baseline_config, {**DEFAULTS, 'injection': baseline_config['injection']})
+        baseline = data[0]
+        print(baseline_config['model'])
+        for flips in DOMAIN['flips']:
+            if not isinstance(flips, str):
+                continue
+            print(flips, end=',')
+            for protection in ('sc', 'clipper', 'none', 'tmr'):
+
+                if not isinstance(protection, str):
+                    continue
+                config = copy(baseline_config)
+                config['flips'] = flips
+                config['protection'] = protection
+                data = load(config, {**DEFAULTS, 'injection': config['injection']})
+                if data:
+                    concat_data = []
+                    for e in data:
+                        concat_data.extend(e)
+                    print(sdc(baseline, concat_data)[0], end=',')
+            print()
+
+
+sdc_protection_scales_with_granularity()
