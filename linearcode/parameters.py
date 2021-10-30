@@ -5,7 +5,7 @@ from itertools import product
 from settings import PROBABILITIES
 
 DOMAIN = {
-    'injection': range(400),
+    'injection': range(100),
     'model': ('resnet50', 'alexnet', 'squeezenet', 'vgg19', 'mobilenet', 'googlenet', 'shufflenet', 'e2e'),
     'quantization': (True, False),
     'protection': ('none', 'clipper', 'ranger', 'sc', 'radar', 'milr', 'flr_mr', 'tmr'),
@@ -24,7 +24,7 @@ DOMAIN = {
               'row',
               'bank',
               'chip',
-              'rowhammer-0.0003')
+              'rowhammer')
 }
 
 # don't use short circuit execution here
