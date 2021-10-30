@@ -5,7 +5,7 @@ from itertools import product
 from settings import PROBABILITIES
 
 DOMAIN = {
-    'injection': range(100),
+    'injection': range(400),
     'model': ('resnet50', 'alexnet', 'squeezenet', 'vgg19', 'mobilenet', 'googlenet', 'shufflenet', 'e2e'),
     'quantization': (True, False),
     'protection': ('none', 'clipper', 'ranger', 'sc', 'radar', 'milr', 'flr_mr', 'tmr'),
@@ -43,6 +43,8 @@ CONSTRAINTS = (
     # lambda c: c['model'] == 'shufflenet',
     # lambda c: c['protection'] == 'sc',
     # lambda c: c['flips'] == 0.00000552972,
+    # retry
+    lambda c: c['flips'] != 'word'
 )
 #
 # CONSTRAINTS = (
