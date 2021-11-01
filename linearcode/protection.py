@@ -2,7 +2,7 @@ import torch
 
 from injection import convert, ClipperReLU, ClipperHardswish, StructuralCodedConv2d, StructuralCodedLinear, \
     NormalizedConv2d, NormalizedLinear, TMRLinear, TMRConv2d, RADARConv2d, RADARLinear, QStructuralCodedConv2d, \
-    QStructuralCodedLinear
+    QStructuralCodedLinear, FRADARConv2d, FRADARLinear
 
 
 def apply_sc(model, config):
@@ -37,8 +37,8 @@ def apply_tmr(model, config):
 
 def apply_radar(model, config):
     model, _ = convert(model, mapping={
-        torch.nn.qat.Conv2d: RADARConv2d,
-        torch.nn.qat.Linear: RADARLinear,
+        torch.nn.Conv2d: FRADARConv2d,
+        torch.nn.Linear: FRADARLinear,
     })
     return model
 

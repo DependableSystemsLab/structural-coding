@@ -12,7 +12,7 @@ from torch.nn.common_types import _size_2_t
 
 from sc import StructuralCode, ErasureCode
 from utils import lcs, biggest_divisor_smaller_than, quantize_tensor, radar_checksum, \
-    recover_with_tmr
+    recover_with_tmr, recover_with_fradar, fradar_checksum
 
 
 def convert(module, mapping=None, in_place=False, injection_index=None, extra_kwargs=None):
@@ -736,3 +736,40 @@ class RADARConv2d(torch.nn.qat.Conv2d):
         self.weight *= (original_checksum == current_checksum)
         return super().forward(input)
 
+
+class FRADARLinear(torch.nn.Linear):
+
+    def __init__(self, in_features: int, out_features: int, bias: bool = True) -> None:
+        super().__init__(in_features, out_features, bias)
+
+    @classmethod
+    def from_original(cls, original: torch.nn.Linear):
+        result = cls(original.in_features, original.out_features, original.bias is not None)
+        result.weight = torch.nn.Parameter(torch.cat((original.weight, fradar_checksum(original.weight))))
+        result.bias = original.bias
+        return result
+
+    def forward(self, input: Tensor) -> Tensor:
+        recovered = recover_with_fradar(self.weight)
+        return F.linear(input, recovered, self.bias)
+
+
+class FRADARConv2d(torch.nn.Conv2d):
+
+    def __init__(self, in_channels: int, out_channels: int, kernel_size: _size_2_t, stride: _size_2_t = 1,
+                 padding: _size_2_t = 0, dilation: _size_2_t = 1, groups: int = 1, bias: bool = True,
+                 padding_mode: str = 'zeros'):
+        super().__init__(in_channels, out_channels, kernel_size, stride, padding, dilation, groups, bias, padding_mode)
+
+    @classmethod
+    def from_original(cls, original: torch.nn.Conv2d):
+        result = cls(original.in_channels, original.out_channels, original.kernel_size, original.stride,
+                     original.padding, original.dilation, original.groups, original.bias is not None,
+                     original.padding_mode)
+        result.weight = torch.nn.Parameter(torch.cat((original.weight, fradar_checksum(original.weight))))
+        result.bias = original.bias
+        return result
+
+    def forward(self, input: Tensor) -> Tensor:
+        recovered = recover_with_fradar(self.weight)
+        return self._conv_forward(input, recovered, self.bias)

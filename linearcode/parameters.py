@@ -33,7 +33,7 @@ CONSTRAINTS = (
     lambda c: c['sampler'] == 'none',
     lambda c: any((c['flips'] != 0, all((c['injection'] == 0, c['protection'] == 'none')))),
     # ensure baseline execution
-    lambda c: c['protection'] in ('sc', 'none', 'clipper', 'tmr'),
+    lambda c: c['protection'] in ('sc', 'none', 'clipper', 'tmr', 'radar', 'milr'),
     lambda c: isinstance(c['flips'], str),
     lambda c: c['model'] not in ("e2e", 'vgg19'),
     lambda c: c['model'] in ("alexnet", 'mobilenet'),
@@ -41,7 +41,7 @@ CONSTRAINTS = (
 
     # this
     # lambda c: c['model'] == 'shufflenet',
-    # lambda c: c['protection'] == 'sc',
+    lambda c: c['protection'] == 'radar',
     # lambda c: c['flips'] == 0.00000552972,
     # retry
     lambda c: c['flips'] != 'word'

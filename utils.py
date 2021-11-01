@@ -68,6 +68,31 @@ def radar_checksum(quantized):
     return checksum
 
 
+def fradar_checksum(weight: Tensor):
+    assert weight.element_size() == 4
+    allocate_memory = weight[weight.shape[0] // 4:].clone()
+    checksum_array = (ctypes.c_ubyte * (allocate_memory.nelement() * allocate_memory.element_size())).from_address(allocate_memory.data_ptr())
+    original_array = (ctypes.c_ubyte * (weight.nelement() * weight.element_size())).from_address(weight.data_ptr())
+    for i in range(0, weight.nelement(), 4):
+        checksum_array[i // 4] = original_array[i]
+    return allocate_memory
+
+
+def recover_with_fradar(weight: Tensor):
+    assert weight.element_size() == 4
+    checksum_channels = weight.shape[0] // 5
+    checksum = weight[checksum_channels * 4:]
+    weight = weight[:checksum_channels * 4].clone().flatten()
+    calculated_checksum = fradar_checksum(weight)
+    checksum_array = (ctypes.c_ubyte * (checksum.nelement() * checksum.element_size())).from_address(checksum.data_ptr())
+    calculated_checksum_array = (ctypes.c_ubyte * (calculated_checksum.nelement() * calculated_checksum.element_size())).from_address(calculated_checksum.data_ptr())
+    result_array = (ctypes.c_ubyte * (weight.nelement() * weight.element_size())).from_address(weight.data_ptr())
+    for i in range(0, weight.nelement(), 4):
+        if checksum_array[i // 4] != calculated_checksum_array[i // 4]:
+            result_array[i] = 0
+    return weight
+
+
 def bit_tmr(param, param1, param2):
     return ((~((param ^ param1) | 256)) & param1) | ((param ^ param1) & param2)
 
