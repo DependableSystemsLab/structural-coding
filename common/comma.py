@@ -125,17 +125,18 @@ if __name__ == '__main__':
         optimizer = optim.Adam(model.parameters(), lr=1e-4)
         criterion = nn.MSELoss()
         for epoch in range(1000):  # runs for the number of eposchs set in the arguments
-            optimizer.zero_grad()
-            for x, y, _ in gen:
+            for i, (x, y, _) in enumerate(gen):
+                optimizer.zero_grad()
                 x = x.to('cuda:0')
                 y = y.to('cuda:0')
                 x = x/127.5 - 1
                 x = transforms.Resize(70)(x)
                 model_output = model(x)
                 loss = criterion(model_output, y)
-                print(loss)
                 loss.backward()
                 optimizer.step()
+                if i == 100000:
+                    break
             torch.save({
                 'epoch': epoch,
                 'model': model.state_dict(),
