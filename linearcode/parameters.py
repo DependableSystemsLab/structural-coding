@@ -6,6 +6,7 @@ from settings import PROBABILITIES
 
 DOMAIN = {
     'injection': range(400),
+    # 'injection': range(1),
     'model': ('resnet50', 'alexnet', 'squeezenet', 'vgg19', 'mobilenet', 'googlenet', 'shufflenet', 'e2e'),
     'quantization': (True, False),
     'protection': ('none', 'clipper', 'ranger', 'sc', 'radar', 'milr', 'flr_mr', 'tmr'),
@@ -44,7 +45,7 @@ CONSTRAINTS = (
     lambda c: c['protection'] == 'radar',
     # lambda c: c['flips'] == 0.00000552972,
     # retry
-    lambda c: c['flips'] != 'word'
+    # lambda c: c['flips'] != 'word'
 )
 #
 # CONSTRAINTS = (
