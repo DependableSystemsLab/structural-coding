@@ -1,6 +1,7 @@
 import os
 
 BATCH_SIZE = int(os.environ.get('BATCH_SIZE', '16'))
+INJECTIONS_RANGE = [int(i) for i in os.environ.get('INJECTIONS_RANGE', '0-400-1').split('-')]
 IMAGENET1K_PATH = os.environ.get('IMAGENET1K_PATH', '../data/random20classes_FI')
 IMAGENET_ROOT = os.environ.get('IMAGENET_ROOT', '../data/imagenet/')
 IMAGENET_PATH = os.environ.get('IMAGENET_PATH', os.path.join(IMAGENET_ROOT, 'ILSVRC/Data/CLS-LOC'))

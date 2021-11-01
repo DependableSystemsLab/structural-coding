@@ -69,6 +69,21 @@ def inject_memory_fault(model, config):
                 initial_count = len(bit_indices_to_flip)
                 while len(bit_indices_to_flip) < count + initial_count:
                     bit_indices_to_flip.add(rnd.randint(start, start + _4KB - 1))
+        elif config['flips'] == 'flr':
+            filter_index = config['injection']
+            start = 0
+            end = None
+            for m in modules:
+                p = m.weight
+                if p.shape[0] <= filter_index:
+                    filter_index -= p.shape[0]
+                    start += p[0].nelement() * bit_width
+                else:
+                    filter_size = p[0].nelement() * bit_width
+                    start += filter_index * filter_size
+                    end = start + filter_size
+                    break
+            bit_indices_to_flip.add(rnd.randint(start, end))
         else:
             assert False
     else:

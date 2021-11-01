@@ -125,6 +125,12 @@ def get_dataset(config):
     if config['dataset'] == 'imagenet_ds':
         sampler = sorted(rnd.choice(range(50000), 10000, replace=False))
         return get_full_image_net(sampler, 'val')
+    if config['dataset'] == 'imagenet_as_i':
+        sampler = set(rnd.choice(range(50000), 10000, replace=False))
+        injection_rnd = numpy.random.RandomState(config['injection'])
+        image_id = injection_rnd.randint(0, 39999)
+        absolute_image_id = [i for i in range(50000) if i not in sampler][image_id]
+        return get_full_image_net([absolute_image_id], 'val')
     if config['dataset'] == 'imagenet_ds_128':
         sampler = sorted(rnd.choice(range(50000), 10000, replace=False)[:128])
         return get_full_image_net(sampler, 'val')
