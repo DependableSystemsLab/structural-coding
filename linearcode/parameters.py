@@ -24,7 +24,7 @@ DOMAIN = {
               'row',
               'bank',
               'chip',
-              'rowhammer-0.0003')
+              'rowhammer')
 }
 
 # don't use short circuit execution here
@@ -43,6 +43,8 @@ CONSTRAINTS = (
     # lambda c: c['model'] == 'shufflenet',
     # lambda c: c['protection'] == 'sc',
     # lambda c: c['flips'] == 0.00000552972,
+    # retry
+    lambda c: c['flips'] != 'word'
 )
 #
 # CONSTRAINTS = (
