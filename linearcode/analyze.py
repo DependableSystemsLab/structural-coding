@@ -11,7 +11,7 @@ from linearcode.fault import inject_memory_fault, get_target_modules
 from linearcode.models import get_model
 from linearcode.parameters import SLURM_ARRAY, DEFAULTS, query_configs, DOMAIN
 from linearcode.protection import PROTECTIONS
-from storage import load, load_pickle
+from storage import load, load_pickle, get_storage_filename
 
 
 def draw_sdc(partial=True):
@@ -440,28 +440,32 @@ def sdc_protection_scales_with_granularity():
     baseline_configs = query_configs(base_query + (
         lambda c: all((c['flips'] == 0, c['injection'] == 0, c['protection'] == 'none')),
     ))
+
     for baseline_config in baseline_configs:
         data = load(baseline_config, {**DEFAULTS, 'injection': baseline_config['injection']})
         baseline = data[0]
-        print(baseline_config['model'])
-        for flips in DOMAIN['flips']:
-            if not isinstance(flips, str):
+        for protection in ('sc', 'clipper', 'none', 'tmr', 'radar'):
+            if not isinstance(protection, str):
                 continue
-            print(flips, end=',')
-            for protection in ('sc', 'clipper', 'none', 'tmr'):
-
-                if not isinstance(protection, str):
-                    continue
-                config = copy(baseline_config)
-                config['flips'] = flips
-                config['protection'] = protection
-                data = load(config, {**DEFAULTS, 'injection': config['injection']})
-                if data:
-                    concat_data = []
-                    for e in data:
-                        concat_data.extend(e)
-                    print(sdc(baseline, concat_data)[0], end=',')
-            print()
+            filename = get_storage_filename({'fig': 'sdc_protection_scales_with_granularity',
+                                             'model': baseline_config['model'],
+                                             'protection': protection},
+                                            extension='.tex', storage='../ubcthesis/data/')
+            with open(filename, mode='w') as data_file:
+                for flips in DOMAIN['flips']:
+                    if not isinstance(flips, str):
+                        continue
+                    if flips in ('bank', 'chip'):
+                        continue
+                    config = copy(baseline_config)
+                    config['flips'] = flips
+                    config['protection'] = protection
+                    data = load(config, {**DEFAULTS, 'injection': config['injection']})
+                    if data:
+                        concat_data = []
+                        for e in data:
+                            concat_data.extend(e)
+                        print(flips, *sdc(baseline, concat_data), file=data_file)
 
 
 sdc_protection_scales_with_granularity()
