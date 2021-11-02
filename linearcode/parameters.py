@@ -37,12 +37,12 @@ CONSTRAINTS = (
     lambda c: c['protection'] in ('sc', 'none', 'clipper', 'tmr', 'radar', 'milr'),
     lambda c: isinstance(c['flips'], str),
     lambda c: c['model'] not in ("e2e", 'vgg19'),
-    lambda c: c['model'] in ("alexnet", 'mobilenet'),
+    lambda c: c['model'] not in ("alexnet", 'mobilenet'),
     lambda c: not c['quantization'],
 
     # this
     # lambda c: c['model'] == 'shufflenet',
-    lambda c: c['protection'] == 'radar',
+    # lambda c: c['protection'] == 'radar',
     # lambda c: c['flips'] == 0.00000552972,
     # retry
     # lambda c: c['flips'] != 'word'
