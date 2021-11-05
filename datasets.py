@@ -1,12 +1,15 @@
 import csv
+import cv2
 import os
 import pickle
 from typing import Tuple, List, Dict, Any, Optional, Callable
+import numpy as np
 
 import numpy.random
 import torch.utils.data
 import torchvision.datasets.folder
 from matplotlib import pyplot
+from torch.utils.data import Dataset
 from torchvision import transforms
 
 from imagenet_class_index import IMAGENET_CLASS_INDEX
@@ -140,6 +143,50 @@ def get_dataset(config):
             sampler = sorted(rnd.choice(range(1000), BATCH_SIZE, replace=False))
         return get_image_net(sampler)
     assert False
+
+
+class DrivingDataset(Dataset):
+    """driving dataset."""
+
+    def __init__(self, root_dir, txt_file, training=True, transform=None):
+        """ Args:
+                txt_file(string)
+                root_file(string)
+                training(boolean) : True for train and False for test
+                transform (callable, optional): Optional transform to be applied on a sample
+        """
+        self.root_dir = root_dir
+        self.txt_file = txt_file
+        self.transform = transform
+        self.img_name = []
+        self.steering_angle = []
+        with open(os.path.join(root_dir, txt_file)) as f:
+            for line in f:
+                self.img_name.append(line.split()[0])
+                # Converting steering angle which we need to predict from radians
+                # to degrees for fast computation
+                self.steering_angle.append(float(line.split()[1]) * np.pi / 180)
+        # 80% for train
+        # 20% for test
+        if (training):
+            self.img_name = self.img_name[:int(len(self.img_name) * 0.8)]
+            self.steering_angle = self.steering_angle[:int(len(self.steering_angle) * 0.8)]
+        else:
+            self.img_name = self.img_name[-int(len(self.img_name) * 0.2) - 1:]
+            self.steering_angle = self.steering_angle[-int(len(self.steering_angle) * 0.2) - 1:]
+
+    def __len__(self):
+        return len(self.steering_angle)
+
+    def __getitem__(self, idx):
+        image = cv2.imread(os.path.join(self.root_dir, self.img_name[idx]))[-150:, :, :]
+        image = cv2.resize(image, (200, 66))
+        new_img = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+
+        if self.transform is not None:
+            new_img = self.transform(new_img)
+
+        return new_img, torch.tensor([self.steering_angle[idx]])
 
 
 if __name__ == '__main__':
