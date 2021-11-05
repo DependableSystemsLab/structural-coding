@@ -122,7 +122,7 @@ if __name__ == '__main__':
         gen = datagen(datapath, time_len=args.time, batch_size=args.batch, ignore_goods=args.nogood)
         model = Comma(pretrained=False).to('cuda:0')
         if args.validation:
-            model.load_state_dict(torch.load('comma_49.pth'))
+            model.load_state_dict(torch.load('comma_49.pth')['model'])
             model.eval()
         else:
             model.train()
