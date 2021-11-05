@@ -143,7 +143,7 @@ if __name__ == '__main__':
                 x = transforms.Resize(70)(x)
                 model_output = model(x)
                 if args.validation:
-                    # print(float(criterion(model_output, y)))
+                    loss += float(criterion(model_output, y))
                     pass
                 else:
                     loss = criterion(model_output, y)
