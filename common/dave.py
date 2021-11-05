@@ -110,14 +110,14 @@ if __name__ == "__main__":
                 loss.backward()
                 optimizer.step()
                 if i % percentage == 0:
-                    print(i // percentage, '%')
+                    print(i * 100 // len(train), '%')
             torch.save({
                 'epoch': epoch,
                 'model': model.state_dict(),
                 'optimizer': optimizer.state_dict()}, 'comma_fast_{}.pth'.format(epoch))
         total_loss = 0
         with torch.no_grad():
-            for i, (x, y, _) in enumerate(train):
+            for i, (x, y) in enumerate(val):
                 x = x.to(device)
                 y = y.to(device)
                 model_output = model(x)
