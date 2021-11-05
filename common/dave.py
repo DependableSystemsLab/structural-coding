@@ -109,8 +109,7 @@ if __name__ == "__main__":
                 loss = criterion(model_output, y)
                 loss.backward()
                 optimizer.step()
-                if i % percentage == 0:
-                    print(i * 100 // len(train), '%')
+                print(i * 100 // len(train), '%')
             torch.save({
                 'epoch': epoch,
                 'model': model.state_dict(),
