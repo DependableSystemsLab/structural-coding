@@ -82,7 +82,7 @@ if __name__ == '__main__':
         parser = argparse.ArgumentParser(description='MiniBatch server')
         parser.add_argument('--batch', dest='batch', type=int, default=256, help='Batch size')
         parser.add_argument('--device', dest='device', type=str, default='cuda:0', help="Device to use")
-        parser.add_argument('--after', dest='after', type=int, default=1, help="Evaluate after how many epochs")
+        parser.add_argument('--after', dest='after', type=int, default=49, help="Evaluate after how many epochs")
         parser.add_argument('--time', dest='time', type=int, default=1, help='Number of frames per sample')
         parser.add_argument('--port', dest='port', type=int, default=5557, help='Port of the ZMQ server')
         parser.add_argument('--buffer', dest='buffer', type=int, default=20,
@@ -128,13 +128,12 @@ if __name__ == '__main__':
             model.eval()
         else:
             model.train()
-        optimizer = optim.Adam(model.parameters(), lr=1e-4)
+        optimizer = optim.Adam(model.parameters(), lr=1e-3)
         criterion = nn.MSELoss()
         epochs = 1000
-        batch_per_epoch = 100000
-        batch_per_epoch = 100
-        loss = 0
+        batch_per_epoch = 1000
         for epoch in range(epochs):  # runs for the number of eposchs set in the arguments
+            report_loss = 0
             for i, (x, y, _) in enumerate(gen):
                 optimizer.zero_grad()
                 x = x.to(device)
@@ -143,17 +142,17 @@ if __name__ == '__main__':
                 x = transforms.Resize(70)(x)
                 model_output = model(x)
                 if args.validation:
-                    loss += float(criterion(model_output, y))
+                    report_loss += float(criterion(model_output, y))
                 else:
                     loss = criterion(model_output, y)
+                    report_loss += float(loss)
                     loss.backward()
                     optimizer.step()
                 if i == batch_per_epoch:
                     break
+            print("Report loss", report_loss)
             if not args.validation:
                 torch.save({
                     'epoch': epoch,
                     'model': model.state_dict(),
-                    'optimizer': optimizer.state_dict()}, 'comma_{}.pth'.format(epoch))
-            else:
-                print("Validation loss", loss)
+                    'optimizer': optimizer.state_dict()}, 'comma_fast_{}.pth'.format(epoch))
