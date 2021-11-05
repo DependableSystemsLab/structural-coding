@@ -19,7 +19,7 @@ class Dave2(nn.Module):
     def __init__(self, pretrained=True):
         super().__init__()
 
-        self.elu = nn.ELU()
+        self.relu = nn.ReLU()
         self.dropout = nn.Dropout()
 
         self.conv_0 = nn.Conv2d(3, 24, (5, 5), stride=(2, 2))
@@ -43,17 +43,17 @@ class Dave2(nn.Module):
     """
     def forward(self, x):
         x = x / 127.5 - 1.0
-        x = self.elu(self.conv_0(x))
-        x = self.elu(self.conv_1(x))
-        x = self.elu(self.conv_2(x))
-        x = self.elu(self.conv_3(x))
-        x = self.elu(self.conv_4(x))
+        x = self.relu(self.conv_0(x))
+        x = self.relu(self.conv_1(x))
+        x = self.relu(self.conv_2(x))
+        x = self.relu(self.conv_3(x))
+        x = self.relu(self.conv_4(x))
         x = self.dropout(x)
 
         x = x.flatten(start_dim=1)
-        x = self.elu(self.fc0(x))
-        x = self.elu(self.fc1(x))
-        x = self.elu(self.fc2(x))
+        x = self.relu(self.fc0(x))
+        x = self.relu(self.fc1(x))
+        x = self.relu(self.fc2(x))
         x = self.fc3(x)
 
         return x
@@ -95,7 +95,7 @@ if __name__ == "__main__":
         model.eval()
     else:
         model.train()
-    optimizer = optim.Adam(model.parameters(), lr=1e-4)
+    optimizer = optim.Adam(model.parameters(), lr=1e-3)
     criterion = nn.MSELoss()
     epochs = 1000
     percentage = len(train) // 100
@@ -107,6 +107,7 @@ if __name__ == "__main__":
                 y = y.to(device)
                 model_output = model(x)
                 total_loss += float(criterion(model_output, y))
+        print("Report loss", total_loss)
         if not args.validation:
             for i, (x, y) in enumerate(train):
                 optimizer.zero_grad()
@@ -122,4 +123,3 @@ if __name__ == "__main__":
                 'model': model.state_dict(),
                 'optimizer': optimizer.state_dict()}, 'comma_fast_{}.pth'.format(epoch))
 
-        print("Report loss", total_loss)
