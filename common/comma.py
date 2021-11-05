@@ -144,7 +144,6 @@ if __name__ == '__main__':
                 model_output = model(x)
                 if args.validation:
                     loss += float(criterion(model_output, y))
-                    pass
                 else:
                     loss = criterion(model_output, y)
                     loss.backward()
