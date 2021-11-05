@@ -136,21 +136,22 @@ if __name__ == '__main__':
         loss = 0
         for epoch in range(epochs):  # runs for the number of eposchs set in the arguments
             for i, (x, y, _) in enumerate(gen):
-                optimizer.zero_grad()
-                x = x.to(device)
-                y = y.to(device)
-                x = x/127.5 - 1
-                x = transforms.Resize(70)(x)
-                model_output = model(x)
-                if args.validation:
-                    # print(float(criterion(model_output, y)))
-                    pass
-                else:
-                    loss = criterion(model_output, y)
-                    loss.backward()
-                    optimizer.step()
-                if i == batch_per_epoch:
-                    break
+                with torch.no_grad():
+                    optimizer.zero_grad()
+                    x = x.to(device)
+                    y = y.to(device)
+                    x = x/127.5 - 1
+                    x = transforms.Resize(70)(x)
+                    model_output = model(x)
+                    if args.validation:
+                        # print(float(criterion(model_output, y)))
+                        pass
+                    else:
+                        loss = criterion(model_output, y)
+                        loss.backward()
+                        optimizer.step()
+                    if i == batch_per_epoch:
+                        break
             if not args.validation:
                 torch.save({
                     'epoch': epoch,
