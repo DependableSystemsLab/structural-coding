@@ -95,11 +95,18 @@ if __name__ == "__main__":
         model.eval()
     else:
         model.train()
-    optimizer = optim.Adam(model.parameters(), lr=1e-4, weight_decay=0.0001)
+    optimizer = optim.Adam(model.parameters(), lr=1e-4)
     criterion = nn.MSELoss()
     epochs = 1000
     percentage = len(train) // 100
     for epoch in range(epochs):
+        total_loss = 0
+        with torch.no_grad():
+            for i, (x, y) in enumerate(val):
+                x = x.to(device)
+                y = y.to(device)
+                model_output = model(x)
+                total_loss += float(criterion(model_output, y))
         if not args.validation:
             for i, (x, y) in enumerate(train):
                 optimizer.zero_grad()
@@ -114,12 +121,5 @@ if __name__ == "__main__":
                 'epoch': epoch,
                 'model': model.state_dict(),
                 'optimizer': optimizer.state_dict()}, 'comma_fast_{}.pth'.format(epoch))
-        total_loss = 0
-        with torch.no_grad():
-            for i, (x, y) in enumerate(val):
-                x = x.to(device)
-                y = y.to(device)
-                model_output = model(x)
-                total_loss += float(criterion(model_output, y))
 
         print("Report loss", total_loss)
