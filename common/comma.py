@@ -121,10 +121,17 @@ if __name__ == '__main__':
 
         gen = datagen(datapath, time_len=args.time, batch_size=args.batch, ignore_goods=args.nogood)
         model = Comma(pretrained=False).to('cuda:0')
-        model.train()
+        if args.validation:
+            model.eval()
+        else:
+            model.train()
         optimizer = optim.Adam(model.parameters(), lr=1e-4)
         criterion = nn.MSELoss()
-        for epoch in range(1000):  # runs for the number of eposchs set in the arguments
+        epochs = 1000
+        batch_per_epoch = 100000
+        batch_per_epoch = 100
+        loss = 0
+        for epoch in range(epochs):  # runs for the number of eposchs set in the arguments
             for i, (x, y, _) in enumerate(gen):
                 optimizer.zero_grad()
                 x = x.to('cuda:0')
@@ -132,12 +139,18 @@ if __name__ == '__main__':
                 x = x/127.5 - 1
                 x = transforms.Resize(70)(x)
                 model_output = model(x)
-                loss = criterion(model_output, y)
-                loss.backward()
-                optimizer.step()
-                if i == 100000:
+                if args.validation:
+                    loss += criterion(model_output, y)
+                else:
+                    loss = criterion(model_output, y)
+                    loss.backward()
+                    optimizer.step()
+                if i == batch_per_epoch:
                     break
-            torch.save({
-                'epoch': epoch,
-                'model': model.state_dict(),
-                'optimizer': optimizer.state_dict()}, 'comma_{}.pth'.format(epoch))
+            if not args.validation:
+                torch.save({
+                    'epoch': epoch,
+                    'model': model.state_dict(),
+                    'optimizer': optimizer.state_dict()}, 'comma_{}.pth'.format(epoch))
+            else:
+                print("Validation loss", loss)
