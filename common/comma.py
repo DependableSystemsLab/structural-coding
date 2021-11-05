@@ -135,8 +135,9 @@ if __name__ == '__main__':
         batch_per_epoch = 100
         loss = 0
         for epoch in range(epochs):  # runs for the number of eposchs set in the arguments
-            for i, (x, y, _) in enumerate(gen):
-                with torch.no_grad():
+
+            with torch.no_grad():
+                for i, (x, y, _) in enumerate(gen):
                     optimizer.zero_grad()
                     x = x.to(device)
                     y = y.to(device)
