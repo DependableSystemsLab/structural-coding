@@ -81,6 +81,8 @@ if __name__ == '__main__':
         # Parameters
         parser = argparse.ArgumentParser(description='MiniBatch server')
         parser.add_argument('--batch', dest='batch', type=int, default=256, help='Batch size')
+        parser.add_argument('--device', dest='device', type=str, default='cuda:0', help="Device to use")
+        parser.add_argument('--after', dest='after', type=int, default=1, help="Evaluate after how many epochs")
         parser.add_argument('--time', dest='time', type=int, default=1, help='Number of frames per sample')
         parser.add_argument('--port', dest='port', type=int, default=5557, help='Port of the ZMQ server')
         parser.add_argument('--buffer', dest='buffer', type=int, default=20,
@@ -118,11 +120,11 @@ if __name__ == '__main__':
             datapath = validation_path
         else:
             datapath = train_path
-
+        device = args.device
         gen = datagen(datapath, time_len=args.time, batch_size=args.batch, ignore_goods=args.nogood)
-        model = Comma(pretrained=False).to('cuda:0')
+        model = Comma(pretrained=False).to(device)
         if args.validation:
-            model.load_state_dict(torch.load('comma_49.pth')['model'])
+            model.load_state_dict(torch.load('comma_{}.pth'.format(args.after))['model'])
             model.eval()
         else:
             model.train()
@@ -135,13 +137,13 @@ if __name__ == '__main__':
         for epoch in range(epochs):  # runs for the number of eposchs set in the arguments
             for i, (x, y, _) in enumerate(gen):
                 optimizer.zero_grad()
-                x = x.to('cuda:0')
-                y = y.to('cuda:0')
+                x = x.to(device)
+                y = y.to(device)
                 x = x/127.5 - 1
                 x = transforms.Resize(70)(x)
                 model_output = model(x)
                 if args.validation:
-                    loss += criterion(model_output, y)
+                    print(float(criterion(model_output, y)))
                 else:
                     loss = criterion(model_output, y)
                     loss.backward()
@@ -155,3 +157,4 @@ if __name__ == '__main__':
                     'optimizer': optimizer.state_dict()}, 'comma_{}.pth'.format(epoch))
             else:
                 print("Validation loss", loss)
+                break
