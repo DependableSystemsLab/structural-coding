@@ -168,23 +168,24 @@ class DrivingDataset(Dataset):
                 self.steering_angle.append(float(line.split()[1]) * np.pi / 180)
         # 80% for train
         # 20% for test
-        if (training):
-            self.img_name = self.img_name[:int(len(self.img_name) * 0.8)]
-            self.steering_angle = self.steering_angle[:int(len(self.steering_angle) * 0.8)]
+        if not training :
+            self.img_name = self.img_name[:int(len(self.img_name) * 0.2)]
+            self.steering_angle = self.steering_angle[:int(len(self.steering_angle) * 0.2)]
         else:
-            self.img_name = self.img_name[-int(len(self.img_name) * 0.2) - 1:]
-            self.steering_angle = self.steering_angle[-int(len(self.steering_angle) * 0.2) - 1:]
+            self.img_name = self.img_name[-int(len(self.img_name) * 0.8) - 1:]
+            self.steering_angle = self.steering_angle[-int(len(self.steering_angle) * 0.8) - 1:]
 
     def __len__(self):
         return len(self.steering_angle)
 
     def __getitem__(self, idx):
-        image = cv2.imread(os.path.join(self.root_dir, self.img_name[idx]))[-150:, :, :]
+        image_name = os.path.join(self.root_dir, self.img_name[idx])
+        image = cv2.imread(image_name)[-150:, :, :]
         image = cv2.resize(image, (200, 66))
-        new_img = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        # new_img = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
         if self.transform is not None:
-            new_img = self.transform(new_img)
+            new_img = self.transform(image)
 
         return new_img, torch.tensor([self.steering_angle[idx]])
 
