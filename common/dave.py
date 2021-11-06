@@ -117,7 +117,7 @@ if __name__ == "__main__":
         model.eval()
     else:
         model.train()
-    optimizer = optim.Adam(model.parameters(), lr=1e-3)
+    optimizer = optim.Adam(model.parameters(), lr=1e-4)
     criterion = nn.MSELoss()
     epochs = 1000
     percentage = len(train) // 100
