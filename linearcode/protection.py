@@ -2,7 +2,8 @@ import torch
 
 from injection import convert, ClipperReLU, ClipperHardswish, StructuralCodedConv2d, StructuralCodedLinear, \
     NormalizedConv2d, NormalizedLinear, TMRLinear, TMRConv2d, RADARConv2d, RADARLinear, QStructuralCodedConv2d, \
-    QStructuralCodedLinear, FRADARConv2d, FRADARLinear, MILRLinear, MILRConv2d, ClipperELU
+    QStructuralCodedLinear, FRADARConv2d, FRADARLinear, MILRLinear, MILRConv2d, ClipperELU, RangerReLU, RangerHardswish, \
+    RangerELU
 
 
 def apply_sc(model, config):
@@ -72,10 +73,32 @@ def apply_clipper(model, config):
     return model
 
 
+def apply_ranger(model, config):
+    model, max_injection_index = convert(model, mapping={
+        torch.nn.ReLU: RangerReLU,
+        torch.nn.Hardswish: RangerHardswish,
+        torch.nn.ELU: RangerELU,
+    }, in_place=True)
+    bounds = []
+    bounds_filename = 'bounds/{}.txt'.format(config['model'])
+    with open(bounds_filename) as bounds_file:
+        for row in bounds_file:
+            bounds.append(eval(row.strip('\n')))
+
+    relu_counter = 0
+    for j, m in enumerate(model.modules()):
+        if hasattr(m, 'bounds'):
+            m.bounds = bounds[relu_counter]
+            m.module_index = relu_counter
+            relu_counter += 1
+    return model
+
+
 PROTECTIONS = {
     'before_quantization': {
         'sc': normalize_model,
         'clipper': apply_clipper,
+        'ranger': apply_ranger,
         'tmr': apply_tmr,
         'milr': apply_milr,
     },

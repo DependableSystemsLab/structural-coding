@@ -109,8 +109,8 @@ class ClipperReLU(torch.nn.ReLU):
         return cls()
 
 
-def clipper(activation_class: [torch.nn.ReLU, torch.nn.Hardswish]):
-    class ClipperActivation(activation_class):
+def range_restriction(activation_class: [torch.nn.ReLU, torch.nn.Hardswish], clip=True):
+    class RangeRestrictionActivation(activation_class):
         def __init__(self, *args, bounds=None, **kwargs):
             super().__init__(*args, **kwargs)
             self.bounds = bounds
@@ -136,19 +136,24 @@ def clipper(activation_class: [torch.nn.ReLU, torch.nn.Hardswish]):
             else:
                 self.detection = torch.nonzero(self.detection)
             result = torch.clip(forward, *self.bounds)
-            result *= result != self.bounds[1]
+            if clip:
+                result *= result != self.bounds[1]
             return result
 
         @classmethod
         def from_original(cls, original: activation_class):
             return cls()
 
-    return ClipperActivation
+    return RangeRestrictionActivation
 
 
-ClipperReLU = clipper(torch.nn.ReLU)
-ClipperHardswish = clipper(torch.nn.Hardswish)
-ClipperELU = clipper(torch.nn.ELU)
+ClipperReLU = range_restriction(torch.nn.ReLU)
+ClipperHardswish = range_restriction(torch.nn.Hardswish)
+ClipperELU = range_restriction(torch.nn.ELU)
+
+RangerReLU = range_restriction(torch.nn.ReLU, False)
+RangerHardswish = range_restriction(torch.nn.Hardswish, False)
+RangerELU = range_restriction(torch.nn.ELU, False)
 
 
 class RangerReLU(torch.nn.ReLU):
