@@ -2,7 +2,7 @@ import torch
 
 from injection import convert, ClipperReLU, ClipperHardswish, StructuralCodedConv2d, StructuralCodedLinear, \
     NormalizedConv2d, NormalizedLinear, TMRLinear, TMRConv2d, RADARConv2d, RADARLinear, QStructuralCodedConv2d, \
-    QStructuralCodedLinear, FRADARConv2d, FRADARLinear
+    QStructuralCodedLinear, FRADARConv2d, FRADARLinear, MILRLinear, MILRConv2d
 
 
 def apply_sc(model, config):
@@ -43,6 +43,14 @@ def apply_radar(model, config):
     return model
 
 
+def apply_milr(model, config):
+    model, _ = convert(model, mapping={
+        torch.nn.Conv2d: MILRConv2d,
+        torch.nn.Linear: MILRLinear,
+    })
+    return model
+
+
 def apply_clipper(model, config):
     model, max_injection_index = convert(model, mapping={
         torch.nn.ReLU: ClipperReLU,
@@ -68,6 +76,7 @@ PROTECTIONS = {
         'sc': normalize_model,
         'clipper': apply_clipper,
         'tmr': apply_tmr,
+        'milr': apply_milr,
     },
     'after_quantization': {
         'radar': apply_radar,

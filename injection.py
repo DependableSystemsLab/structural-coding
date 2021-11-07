@@ -1,6 +1,10 @@
+import operator
 from copy import deepcopy
+from functools import reduce
 from struct import pack, unpack
-from typing import overload
+from typing import overload, Optional
+
+import numpy.random
 from torch.nn import functional as F
 
 import torch.nn
@@ -773,3 +777,73 @@ class FRADARConv2d(torch.nn.Conv2d):
     def forward(self, input: Tensor) -> Tensor:
         recovered = recover_with_fradar(self.weight)
         return self._conv_forward(input, recovered, self.bias)
+
+
+MILR_REDUNDANCY = 4
+
+
+class MILRLinear(torch.nn.Linear):
+
+    def __init__(self, in_features: int, out_features: int, bias: bool = True) -> None:
+        super().__init__(in_features, out_features, bias)
+
+    @classmethod
+    def from_original(cls, original: torch.nn.Linear):
+        result = cls(original.in_features, original.out_features, original.bias is not None)
+        result.weight = original.weight
+        result.bias = original.bias
+        random_input = cls.get_random_input(result)
+        result.checkpoint = original.forward(random_input)
+        return result
+
+    def get_random_input(self):
+        rnd = numpy.random.RandomState(2021)
+        random_input = rnd.random((MILR_REDUNDANCY, self.in_features))
+        return torch.FloatTensor(random_input)
+
+    def forward(self, input: Tensor) -> Tensor:
+        if torch.any(super().forward(self.get_random_input()) != self.checkpoint):
+            self.weight = torch.nn.Parameter(torch.matmul(torch.pinverse(self.get_random_input()), self.checkpoint - self.bias))
+        return super().forward(input)
+
+
+class MILRConv2d(torch.nn.Conv2d):
+
+    def __init__(self, in_channels: int, out_channels: int, kernel_size: _size_2_t, stride: _size_2_t = 1,
+                 padding: _size_2_t = 0, dilation: _size_2_t = 1, groups: int = 1, bias: bool = True,
+                 padding_mode: str = 'zeros'):
+        super().__init__(in_channels, out_channels, kernel_size, stride, padding, dilation, groups, bias, padding_mode)
+
+    def get_random_input(self):
+        rnd = numpy.random.RandomState(2021)
+        random_input = rnd.random((MILR_REDUNDANCY, self.in_channels, self.kernel_size[0], self.kernel_size[1]))
+        return torch.FloatTensor(random_input)
+
+    @classmethod
+    def from_original(cls, original: torch.nn.Conv2d):
+        result = cls(original.in_channels, original.out_channels, original.kernel_size, original.stride,
+                     original.padding, original.dilation, original.groups, original.bias is not None,
+                     original.padding_mode)
+        result.weight = original.weight
+        result.bias = original.bias
+        result.checkpoint = original._conv_forward(result.get_random_input(), original.weight, None)
+        return result
+
+    def _conv_forward(self, input: Tensor, weight: Tensor, bias: Optional[Tensor]):
+        if torch.any(self.checkpoint != super()._conv_forward(self.get_random_input(), weight, None)):
+            weight = weight.clone()
+            n = reduce(operator.mul, weight.shape[1:])
+            identity = torch.zeros((n,) + weight.shape[1:])
+            for i in range(n):
+                identity[i].view(n)[i] = 1
+            for i in range(weight.shape[0]):
+                transformation = super()._conv_forward(self.get_random_input(), identity, None).view(n, -1)
+                checkpoint_channel = self.checkpoint[:, i].view(1, -1)
+                inverse_transformation = torch.pinverse(transformation)
+                original_weight = torch.matmul(checkpoint_channel, inverse_transformation)
+                self.weight[i] = original_weight.view(*weight.shape[1:])
+            weight = self.weight
+        return super()._conv_forward(input, weight, bias)
+
+
+
