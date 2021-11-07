@@ -1,9 +1,7 @@
-import numpy
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 # https://github.com/HaojieYuu/pytorch_dave2/blob/master/model.py
-from torch import optim, FloatTensor
+from torch import optim
 from torch.utils.data import DataLoader
 from torchvision.transforms import transforms
 
@@ -34,15 +32,10 @@ class Dave2(nn.Module):
         self.conv_4 = nn.Conv2d(64, 64, kernel_size=(3, 3), padding='valid')  # 256 kernels, size 3x3
 
         self.fc0 = nn.Linear(1152, 100)
-        # self.fc0 = nn.Linear(1280, 100)
         self.fc1 = nn.Linear(100, 50)
         self.fc2 = nn.Linear(50, 10)
         self.fc3 = nn.Linear(10, 1)
         if pretrained:
-            # for i, p in enumerate(self.parameters()):
-            #     with torch.no_grad():
-            #         p[:] = reverse_dims(FloatTensor(numpy.load('dave/{}.npz'.format(i))))
-            # torch.save(self.state_dict(), 'dave/steering_angle.pth')
             self.load_state_dict(torch.load('dave/steering_angle.pth'))
 
     """ 
@@ -52,36 +45,23 @@ class Dave2(nn.Module):
     """
     def forward(self, x):
         x = self.elu(self.conv_0(x))
-        # print(x.flatten()[0], x.shape)
         x = self.elu(self.conv_1(x))
-        # print(x.flatten()[0], x.shape)
         x = self.elu(self.conv_2(x))
-        # print(x.flatten()[0], x.shape)
         x = self.elu(self.conv_3(x))
-        # print(x.flatten()[0], x.shape)
         x = self.elu(self.conv_4(x))
-        # print(x.flatten()[0], x.shape)
         x = self.dropout(x)
 
         x = x.permute(0, 3, 2, 1)
-        # print(x, x.shape)
         x = x.flatten(start_dim=1)
-        # print(x)
-        # print(x)
         x = self.elu(self.fc0(x))
-        # print(x)
         x = self.elu(self.fc1(x))
-        # print(x)
         x = self.elu(self.fc2(x))
-        # print(x)
         x = self.fc3(x)
-        # print(x)
 
         return x
 
 
 if __name__ == "__main__":
-    from dask_generator import datagen
     import argparse
 
     # Parameters

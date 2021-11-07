@@ -1,16 +1,19 @@
 import sys
 
 import torch
-import common.models
-from datasets import get_image_net_20p
-from injection import ClipperReLU, convert, ClipperHardswish
+from torch.utils.data import DataLoader
+from torchvision.transforms import transforms
 
+import common.models
+from datasets import get_image_net_20p, DrivingDataset
+from injection import ClipperReLU, convert, ClipperHardswish
+from settings import BATCH_SIZE
 
 if __name__ == '__main__':
 
     _, model, device = sys.argv
 
-    for model_name, model_class in common.models.MODEL_CLASSES:
+    for model_name, model_class, criterion in common.models.MODEL_CLASSES:
         if model_name != model:
             continue
         model = model_class(pretrained=True)
@@ -24,8 +27,18 @@ if __name__ == '__main__':
                 m.train()
                 m.profile = True
         model.to(device)
-        percentage = 16015 // 100
-        for i, (x, y) in enumerate(get_image_net_20p()):
+        if model_name != 'e2e':
+            data_loader = get_image_net_20p()
+        else:
+            transforms_composed = transforms.Compose([
+                transforms.ToTensor(),
+                # transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+                transforms.Lambda(lambda x: x.transpose(1, 2))
+            ])
+            data_loader = DataLoader(DrivingDataset('../data/sullychen/driving_dataset/', 'data.txt', True,
+                                                    transforms_composed), batch_size=BATCH_SIZE)
+        percentage = len(data_loader) // 100
+        for i, (x, y) in enumerate(data_loader):
             x = x.to(device)
             model(x)
             if i % percentage == 0:

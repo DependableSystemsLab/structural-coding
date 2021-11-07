@@ -8,6 +8,8 @@ from torchvision.models.googlenet import BasicConv2d, Inception, InceptionAux
 from torchvision.models.resnet import Bottleneck, ResNet, _resnet
 import torch.nn.functional as F
 
+import common.dave
+
 
 class MyBottleneck(Bottleneck):
 
@@ -116,6 +118,7 @@ MODEL_CLASSES = (
     # big memory requirement
     ('resnet50', resnet50),
     ('shufflenet', torchvision.models.shufflenet_v2_x0_5),
+    ('e2e', common.dave.Dave2)
 )
 
 LOSS_CLASSES = (
@@ -128,4 +131,5 @@ LOSS_CLASSES = (
     # big memory requirement
     ('resnet50', nn.CrossEntropyLoss),
     ('shufflenet', nn.CrossEntropyLoss),
+    ('e2e', nn.MSELoss),
 )
