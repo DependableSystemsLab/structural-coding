@@ -47,9 +47,10 @@ def inject_memory_fault(model, config):
             corrupted_chunk_starts = set()
             while len(corrupted_chunk_starts) < number_of_corrupted_chunks:
                 corrupted_chunk_starts.add(rnd.randint(0, pages - 1) * _4KB)
-            start = rnd.randint(0, _4KB - 1)
+            start = rnd.randint(0, _4KB / _2B - 1) * _2B
             for corrupted_chunk_start in corrupted_chunk_starts:
                 bit_indices_to_flip.add(start + corrupted_chunk_start)
+            granularity = _2B
         elif config['flips'] == 'bank':
             bank_index = rnd.randint(0, 63) * _2B
             for i in range(bank_index, size, 64 * _2B):
@@ -210,6 +211,8 @@ if __name__ == '__main__':
     indices, _ = inject_memory_fault(module, {'quantization': False, 'injection': 0, 'flips': 'row'})
     assert len(set(i // _4KB for i in indices)) == 2
     indices, _ = inject_memory_fault(module, {'quantization': False, 'injection': 0, 'flips': 'column'})
+    assert len(indices) == 3
+    assert all(i % _2B == 0 for i in indices)
     assert len(set((i // _2B) % (_4KB // _2B) for i in indices)) == 1
     indices, size = inject_memory_fault(module, {'quantization': False, 'injection': 0, 'flips': 'bank'})
     assert len(set(i % (64 * _2B) for i in indices)) == 1
