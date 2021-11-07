@@ -9,7 +9,7 @@ import numpy.random
 import torch.utils.data
 import torchvision.datasets.folder
 from matplotlib import pyplot
-from torch.utils.data import Dataset
+from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms
 
 from imagenet_class_index import IMAGENET_CLASS_INDEX
@@ -142,6 +142,13 @@ def get_dataset(config):
         if config['sampler'] == 'tiny':
             sampler = sorted(rnd.choice(range(1000), BATCH_SIZE, replace=False))
         return get_image_net(sampler)
+    if config['dataset'] == 'driving_dataset_test':
+        transforms_composed = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Lambda(lambda x: x.transpose(1, 2))
+        ])
+        return DataLoader(DrivingDataset('../data/sullychen/driving_dataset/', 'data.txt', False,
+                                         transforms_composed), batch_size=BATCH_SIZE)
     assert False
 
 

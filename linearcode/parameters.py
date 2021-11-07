@@ -16,7 +16,8 @@ DOMAIN = {
                 'imagenet_ds',
                 # a 128 (4 batches) sub sample
                 'imagenet_ds_128',
-                'comma.ai', 'commaai_test'),
+                'comma.ai', 'commaai_test',
+                'driving_dataset_test'),
     'flips': (1, 2, 4, 8, 16, 32,
               0,
               *PROBABILITIES,
@@ -30,7 +31,11 @@ DOMAIN = {
 
 # don't use short circuit execution here
 CONSTRAINTS = (
-    lambda c: c['dataset'] == 'imagenet_ds_128',
+    lambda c: c['dataset'] in ('imagenet_ds_128', 'driving_dataset_test'),
+    lambda c: any((
+        all((c['dataset'] == 'imagenet_ds_128', c['model'] != 'e2e')),
+        all((c['dataset'] == 'driving_dataset_test', c['model'] == 'e2e'))
+    )),
     lambda c: c['sampler'] == 'none',
     lambda c: any((c['flips'] != 0, all((c['injection'] == 0, c['protection'] == 'none')))),
     # ensure baseline execution

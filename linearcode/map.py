@@ -57,7 +57,10 @@ with torch.no_grad():
         start_time = time.time()
         model_output = model(x)
         loss = loss_function(model_output, y)
-        indices = torch.topk(model_output, k=5).indices
+        if CONFIG['model'] == 'e2e':
+            indices = None
+        else:
+            indices = torch.topk(model_output, k=5).indices
         end_time = time.time()
         evaluation.append({'top5': indices,
                            'label': y,
