@@ -148,6 +148,7 @@ def clipper(activation_class: [torch.nn.ReLU, torch.nn.Hardswish]):
 
 ClipperReLU = clipper(torch.nn.ReLU)
 ClipperHardswish = clipper(torch.nn.Hardswish)
+ClipperELU = clipper(torch.nn.ELU)
 
 
 class RangerReLU(torch.nn.ReLU):

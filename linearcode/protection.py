@@ -2,7 +2,7 @@ import torch
 
 from injection import convert, ClipperReLU, ClipperHardswish, StructuralCodedConv2d, StructuralCodedLinear, \
     NormalizedConv2d, NormalizedLinear, TMRLinear, TMRConv2d, RADARConv2d, RADARLinear, QStructuralCodedConv2d, \
-    QStructuralCodedLinear, FRADARConv2d, FRADARLinear, MILRLinear, MILRConv2d
+    QStructuralCodedLinear, FRADARConv2d, FRADARLinear, MILRLinear, MILRConv2d, ClipperELU
 
 
 def apply_sc(model, config):
@@ -55,6 +55,7 @@ def apply_clipper(model, config):
     model, max_injection_index = convert(model, mapping={
         torch.nn.ReLU: ClipperReLU,
         torch.nn.Hardswish: ClipperHardswish,
+        torch.nn.ELU: ClipperELU,
     }, in_place=True)
     bounds = []
     bounds_filename = 'bounds/{}.txt'.format(config['model'])

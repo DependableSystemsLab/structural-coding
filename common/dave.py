@@ -1,3 +1,5 @@
+import os
+
 import torch
 import torch.nn as nn
 # https://github.com/HaojieYuu/pytorch_dave2/blob/master/model.py
@@ -6,7 +8,7 @@ from torch.utils.data import DataLoader
 from torchvision.transforms import transforms
 
 from datasets import DrivingDataset
-from settings import BATCH_SIZE
+from settings import BATCH_SIZE, BASE_DIRECTORY
 
 
 def reverse_dims(param):
@@ -22,7 +24,14 @@ class Dave2(nn.Module):
     def __init__(self, pretrained=True):
         super().__init__()
 
-        self.elu = nn.ELU()
+        self.elu_0 = nn.ELU()
+        self.elu_1 = nn.ELU()
+        self.elu_2 = nn.ELU()
+        self.elu_3 = nn.ELU()
+        self.elu_4 = nn.ELU()
+        self.elu_5 = nn.ELU()
+        self.elu_6 = nn.ELU()
+        self.elu_7 = nn.ELU()
         self.dropout = nn.Dropout()
 
         self.conv_0 = nn.Conv2d(3, 24, (5, 5), stride=(2, 2), padding='valid')
@@ -36,7 +45,7 @@ class Dave2(nn.Module):
         self.fc2 = nn.Linear(50, 10)
         self.fc3 = nn.Linear(10, 1)
         if pretrained:
-            self.load_state_dict(torch.load('dave/steering_angle.pth'))
+            self.load_state_dict(torch.load(os.path.join(BASE_DIRECTORY, 'common/dave/steering_angle.pth')))
 
     """ 
     * @brief Function to build the model.
@@ -44,18 +53,18 @@ class Dave2(nn.Module):
     * @return The trained prediction network.
     """
     def forward(self, x):
-        x = self.elu(self.conv_0(x))
-        x = self.elu(self.conv_1(x))
-        x = self.elu(self.conv_2(x))
-        x = self.elu(self.conv_3(x))
-        x = self.elu(self.conv_4(x))
+        x = self.elu_0(self.conv_0(x))
+        x = self.elu_1(self.conv_1(x))
+        x = self.elu_2(self.conv_2(x))
+        x = self.elu_3(self.conv_3(x))
+        x = self.elu_4(self.conv_4(x))
         x = self.dropout(x)
 
         x = x.permute(0, 3, 2, 1)
         x = x.flatten(start_dim=1)
-        x = self.elu(self.fc0(x))
-        x = self.elu(self.fc1(x))
-        x = self.elu(self.fc2(x))
+        x = self.elu_5(self.fc0(x))
+        x = self.elu_6(self.fc1(x))
+        x = self.elu_7(self.fc2(x))
         x = self.fc3(x)
 
         return x

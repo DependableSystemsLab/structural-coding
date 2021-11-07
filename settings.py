@@ -14,3 +14,5 @@ PROBABILITIES = (
     0.00000552972 * 0.5 ** 6,
     0.00000552972 * 0.5 ** 8,
 )
+
+BASE_DIRECTORY = os.path.dirname(os.path.abspath(__file__))
