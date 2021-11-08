@@ -93,10 +93,18 @@ if __name__ == "__main__":
     args, more = parser.parse_known_args()
 
     device = args.device
+    # transforms_composed = transforms.Compose([
+    #     transforms.ToTensor(),
+    #     # transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+    #     transforms.Lambda(lambda x: x.transpose(1, 2))
+    # ])
+
     transforms_composed = transforms.Compose([
         transforms.ToTensor(),
-        # transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
-        transforms.Lambda(lambda x: x.transpose(1, 2))
+        transforms.Lambda(lambda x: x.flip(0)),
+        transforms.Lambda(lambda x: x[:, -150:, :]),
+        transforms.Lambda(lambda x: x.transpose(1, 2)),
+        transforms.Resize((200, 66)),
     ])
     train = DataLoader(DrivingDataset('../data/sullychen/driving_dataset/', 'data.txt', True, transforms_composed), batch_size=BATCH_SIZE)
     val = DataLoader(DrivingDataset('../data/sullychen/driving_dataset/', 'data.txt', False, transforms_composed), batch_size=BATCH_SIZE)

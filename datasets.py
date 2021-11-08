@@ -1,5 +1,4 @@
 import csv
-import cv2
 import os
 import pickle
 from typing import Tuple, List, Dict, Any, Optional, Callable
@@ -145,7 +144,10 @@ def get_dataset(config):
     if config['dataset'] == 'driving_dataset_test':
         transforms_composed = transforms.Compose([
             transforms.ToTensor(),
-            transforms.Lambda(lambda x: x.transpose(1, 2))
+            transforms.Lambda(lambda x: x.flip(0)),
+            transforms.Lambda(lambda x: x[:, -150:, :]),
+            transforms.Lambda(lambda x: x.transpose(1, 2)),
+            transforms.Resize((200, 66)),
         ])
         return DataLoader(DrivingDataset('../data/sullychen/driving_dataset/', 'data.txt', False,
                                          transforms_composed), batch_size=BATCH_SIZE)
@@ -187,8 +189,10 @@ class DrivingDataset(Dataset):
 
     def __getitem__(self, idx):
         image_name = os.path.join(self.root_dir, self.img_name[idx])
-        image = cv2.imread(image_name)[-150:, :, :]
-        image = cv2.resize(image, (200, 66))
+        # image = cv2.imread(image_name)
+        # image = image[-150:, :, :]
+        # image = cv2.resize(image, (200, 66))
+        image = torchvision.datasets.folder.default_loader(image_name)
         # new_img = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
         if self.transform is not None:

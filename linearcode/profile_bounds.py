@@ -34,8 +34,10 @@ if __name__ == '__main__':
         else:
             transforms_composed = transforms.Compose([
                 transforms.ToTensor(),
-                # transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
-                transforms.Lambda(lambda x: x.transpose(1, 2))
+                transforms.Lambda(lambda x: x.flip(0)),
+                transforms.Lambda(lambda x: x[:, -150:, :]),
+                transforms.Lambda(lambda x: x.transpose(1, 2)),
+                transforms.Resize((200, 66)),
             ])
             data_loader = DataLoader(DrivingDataset('../data/sullychen/driving_dataset/', 'data.txt', True,
                                                     transforms_composed), batch_size=BATCH_SIZE)
