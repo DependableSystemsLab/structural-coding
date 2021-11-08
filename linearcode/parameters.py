@@ -5,8 +5,8 @@ from itertools import product
 from settings import PROBABILITIES
 
 DOMAIN = {
-    'injection': range(400),
-    # 'injection': range(1),
+    # 'injection': range(400),
+    'injection': range(1),
     'model': ('resnet50', 'alexnet', 'squeezenet', 'vgg19', 'mobilenet', 'googlenet', 'shufflenet', 'e2e'),
     'quantization': (True, False),
     'protection': ('none', 'clipper', 'ranger', 'sc', 'radar', 'milr', 'flr_mr', 'tmr'),
@@ -18,7 +18,12 @@ DOMAIN = {
                 'imagenet_ds_128',
                 'comma.ai', 'commaai_test',
                 'driving_dataset_test'),
-    'flips': (1, 2, 4, 8, 16, 32,
+    'flips': (1,
+              # 2,
+              4,
+              # 8,
+              16,
+              # 32,
               0,
               *PROBABILITIES,
               'word',
@@ -39,27 +44,11 @@ CONSTRAINTS = (
     lambda c: c['sampler'] == 'none',
     lambda c: any((c['flips'] != 0, all((c['injection'] == 0, c['protection'] == 'none')))),
     # ensure baseline execution
-    lambda c: c['protection'] in ('sc', 'none', 'clipper', 'tmr', 'radar', 'milr'),
+    lambda c: c['protection'] in ('sc', 'none', 'clipper', 'tmr', 'radar', 'milr', 'ranger'),
     lambda c: isinstance(c['flips'], str),
-    lambda c: c['model'] not in ("e2e", 'vgg19'),
-    lambda c: c['model'] not in ("alexnet", 'mobilenet'),
+    lambda c: c['model'] not in ('vgg19', ),
     lambda c: not c['quantization'],
-
-    # this
-    # lambda c: c['model'] == 'shufflenet',
-    # lambda c: c['protection'] == 'radar',
-    # lambda c: c['flips'] == 0.00000552972,
-    # retry
-    # lambda c: c['flips'] != 'word'
 )
-#
-# CONSTRAINTS = (
-#     lambda c: c['sampler'] == 'tiny',
-#     lambda c: c['protection'] in ('sc', 'none', 'clipper'),
-#     lambda c: c['flips'] <= 1,
-#     lambda c: not (c['model'] == 'alexnet' and c['protection'] == 'clipper'),
-#     lambda c: c['injection'] == 1,
-# )
 
 DEFAULTS = {
     'sampler': 'none',

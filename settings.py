@@ -9,9 +9,9 @@ IMAGENET20P_SAMPLER_PATH = os.environ.get('IMAGENET20P_SAMPLER_PATH', '../imagen
 COMMA_MODEL_ROOT = os.environ.get('COMMA_MODEL_ROOT', 'comma')
 PROBABILITIES = (
     0.00000552972,
-    0.00000552972 * 0.5 ** 2,
+    # 0.00000552972 * 0.5 ** 2,
     0.00000552972 * 0.5 ** 4,
-    0.00000552972 * 0.5 ** 6,
+    # 0.00000552972 * 0.5 ** 6,
     0.00000552972 * 0.5 ** 8,
 )
 

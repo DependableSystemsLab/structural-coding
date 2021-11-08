@@ -93,7 +93,7 @@ def inject_memory_fault(model, config):
             parameter_index = rnd.choice(range(len(parameters)), 1, p=[p.nelement() * bit_width / size for p in parameters])[0]
             start = 0
             for i in range(parameter_index):
-                start += parameters[i].nelement()
+                start += parameters[i].nelement() * bit_width
             while len(bit_indices_to_flip) < config['flips']:
                 bit_indices_to_flip.add(rnd.randint(start, parameters[parameter_index].nelement() * bit_width - 1))
         else:

@@ -7,6 +7,10 @@ from injection import convert, ClipperReLU, ClipperHardswish, StructuralCodedCon
 
 
 def apply_sc(model, config):
+    if not isinstance(config['flips'], str) and config['flips'] // 1 == config['flips']:
+        k = config['flips']
+    else:
+        k = 32
     model, _ = convert(model, mapping={
         torch.nn.Conv2d: StructuralCodedConv2d,
         torch.nn.qat.Conv2d: QStructuralCodedConv2d,
