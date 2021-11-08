@@ -3,6 +3,7 @@
 #SBATCH --mem=8G
 #SBATCH --array 0-1959
 
+module load opencv
 export IMAGENET_ROOT=/home/aasgarik/scratch/data/imagenet
 export PYTHONPATH=$PYTHONPATH:/home/aasgarik/projects/def-karthikp/aasgarik/reasilience
 source /home/aasgarik/projects/def-karthikp/aasgarik/dnnfault/venv/bin/activate
