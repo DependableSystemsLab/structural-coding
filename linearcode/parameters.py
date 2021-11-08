@@ -45,9 +45,14 @@ CONSTRAINTS = (
     lambda c: any((c['flips'] != 0, all((c['injection'] == 0, c['protection'] == 'none')))),
     # ensure baseline execution
     lambda c: c['protection'] in ('sc', 'none', 'clipper', 'tmr', 'radar', 'milr', 'ranger'),
-    lambda c: isinstance(c['flips'], str),
     lambda c: c['model'] not in ('vgg19', ),
     lambda c: not c['quantization'],
+
+    # retry
+    lambda c: any((
+        not isinstance(c['flips'], str),
+        c['model'] == 'e2e',
+    )),
 )
 
 DEFAULTS = {
