@@ -5,11 +5,10 @@ from itertools import product
 from settings import PROBABILITIES
 
 DOMAIN = {
-    # 'injection': range(400),
-    'injection': range(1),
-    'model': ('resnet50', 'alexnet', 'squeezenet', 'vgg19', 'mobilenet', 'googlenet', 'shufflenet', 'e2e'),
+    'injection': range(400),
+    # 'injection': range(1),
+    'model': ('e2e', 'resnet50', 'alexnet', 'squeezenet', 'vgg19', 'mobilenet', 'googlenet', 'shufflenet'),
     'quantization': (True, False),
-    'protection': ('none', 'clipper', 'ranger', 'sc', 'radar', 'milr', 'flr_mr', 'tmr'),
     'sampler': ('none', 'critical', 'tiny'),
     'dataset': ('full_imagenet', 'imagenet', 'imagenet_test',
                 # 10,000 deployment images as used in "Optimizing Selective Protection for CNN Resilience"
@@ -29,9 +28,10 @@ DOMAIN = {
               'word',
               'column',
               'row',
-              'bank',
-              'chip',
-              'rowhammer')
+              # 'bank',
+              # 'chip',
+              'rowhammer'),
+    'protection': ('none', 'clipper', 'ranger', 'sc', 'radar', 'milr', 'flr_mr', 'tmr'),
 }
 
 # don't use short circuit execution here

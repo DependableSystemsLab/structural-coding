@@ -809,7 +809,10 @@ class MILRLinear(torch.nn.Linear):
 
     def forward(self, input: Tensor) -> Tensor:
         if torch.any(super().forward(self.get_random_input()) != self.checkpoint):
-            self.weight = torch.nn.Parameter(torch.matmul(torch.pinverse(self.get_random_input()), self.checkpoint - self.bias))
+            self.weight = torch.nn.Parameter(torch.matmul(
+                (self.checkpoint - self.bias).transpose(0, 1),
+                torch.pinverse(self.get_random_input()).transpose(0, 1),
+            ))
         return super().forward(input)
 
 
@@ -844,7 +847,7 @@ class MILRConv2d(torch.nn.Conv2d):
                 identity[i].view(n)[i] = 1
             for i in range(weight.shape[0]):
                 transformation = super()._conv_forward(self.get_random_input(), identity, None).view(n, -1)
-                checkpoint_channel = self.checkpoint[:, i].view(1, -1)
+                checkpoint_channel = self.checkpoint[:, i].reshape(1, -1)
                 inverse_transformation = torch.pinverse(transformation)
                 original_weight = torch.matmul(checkpoint_channel, inverse_transformation)
                 self.weight[i] = original_weight.view(*weight.shape[1:])
