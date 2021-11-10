@@ -34,6 +34,7 @@ def load_pickle(filename):
             try:
                 while True:
                     result.append(pickle.load(f))
+                    # return result
             except EOFError:
                 return result
     except OSError as ex:
