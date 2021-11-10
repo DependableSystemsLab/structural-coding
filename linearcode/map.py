@@ -71,4 +71,10 @@ with torch.no_grad():
                            'protection': [m.get_internal_log() for m in protection_modules],
                            'batch_size': BATCH_SIZE})
         print("Done with batch {} after injection".format(i), file=sys.stderr)
+    # correct = 0
+    # total = 0
+    # for e in evaluation:
+    #     correct += torch.sum(e['label'] == e['top5'][:, 0])
+    #     total += len(e['label'])
+    # print(correct / total)
     extend(CONFIG, evaluation, {**DEFAULTS, 'injection': CONFIG['injection']})

@@ -435,7 +435,7 @@ def sdc_protection_scales_with_granularity():
         lambda c: not c['quantization'],
         lambda c: isinstance(c['flips'], str) or c['flips'] == 0,
         lambda c: not c['model'] in ('e2e', 'vgg19'),
-        lambda c: c['model'] in ("alexnet", 'mobilenet'),
+        # lambda c: c['model'] in ("alexnet", 'mobilenet'),
     )
     baseline_configs = query_configs(base_query + (
         lambda c: all((c['flips'] == 0, c['injection'] == 0, c['protection'] == 'none')),
@@ -444,7 +444,15 @@ def sdc_protection_scales_with_granularity():
     for baseline_config in baseline_configs:
         data = load(baseline_config, {**DEFAULTS, 'injection': baseline_config['injection']})
         baseline = data[0]
-        for protection in ('sc', 'clipper', 'none', 'tmr', 'radar'):
+        for protection in (
+            # 'sc',
+            # 'clipper',
+            # 'none',
+            # 'tmr',
+            # 'radar',
+            # 'milr',
+            'ranger',
+        ):
             if not isinstance(protection, str):
                 continue
             filename = get_storage_filename({'fig': 'sdc_protection_scales_with_granularity',
