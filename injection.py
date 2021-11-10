@@ -755,12 +755,12 @@ class FRADARLinear(torch.nn.Linear):
     @classmethod
     def from_original(cls, original: torch.nn.Linear):
         result = cls(original.in_features, original.out_features, original.bias is not None)
-        result.weight = torch.nn.Parameter(torch.cat((original.weight, fradar_checksum(original.weight))))
-        result.bias = original.bias
+        result.weight = original.weight
+        result.weight_redundancy = torch.nn.Parameter(fradar_checksum(original.weight))
         return result
 
     def forward(self, input: Tensor) -> Tensor:
-        recovered = recover_with_fradar(self.weight)
+        recovered = recover_with_fradar(self.weight, self.weight_redundancy)
         return F.linear(input, recovered, self.bias)
 
 
@@ -776,12 +776,13 @@ class FRADARConv2d(torch.nn.Conv2d):
         result = cls(original.in_channels, original.out_channels, original.kernel_size, original.stride,
                      original.padding, original.dilation, original.groups, original.bias is not None,
                      original.padding_mode)
-        result.weight = torch.nn.Parameter(torch.cat((original.weight, fradar_checksum(original.weight))))
+        result.weight = original.weight
+        result.weight_redundancy = torch.nn.Parameter(fradar_checksum(original.weight))
         result.bias = original.bias
         return result
 
     def forward(self, input: Tensor) -> Tensor:
-        recovered = recover_with_fradar(self.weight)
+        recovered = recover_with_fradar(self.weight, self.weight_redundancy)
         return self._conv_forward(input, recovered, self.bias)
 
 
