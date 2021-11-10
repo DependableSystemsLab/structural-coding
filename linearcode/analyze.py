@@ -445,12 +445,12 @@ def sdc_protection_scales_with_granularity():
         data = load(baseline_config, {**DEFAULTS, 'injection': baseline_config['injection']})
         baseline = data[0]
         for protection in (
-            # 'sc',
-            # 'clipper',
-            # 'none',
-            # 'tmr',
-            # 'radar',
-            # 'milr',
+            'sc',
+            'clipper',
+            'none',
+            'tmr',
+            'radar',
+            'milr',
             'ranger',
         ):
             if not isinstance(protection, str):
@@ -463,7 +463,7 @@ def sdc_protection_scales_with_granularity():
                 for flips in DOMAIN['flips']:
                     if not isinstance(flips, str):
                         continue
-                    if flips in ('bank', 'chip'):
+                    if flips in ('bank', 'chip', 'rowhammer'):
                         continue
                     config = copy(baseline_config)
                     config['flips'] = flips
