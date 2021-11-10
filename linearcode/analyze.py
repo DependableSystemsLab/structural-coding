@@ -525,4 +525,45 @@ def regression_recovery():
                         print(flips, protection_loss / baseline_loss, file=data_file)
 
 
-regression_recovery()
+def rewhammer_recovery():
+    base_query = (
+        lambda c: c['dataset'] == 'imagenet_ds_128',
+        lambda c: c['sampler'] == 'none',
+        lambda c: not c['quantization'],
+        lambda c: isinstance(c['flips'], str) or c['flips'] == 0,
+        lambda c: not c['model'] in ('e2e', 'vgg19'),
+    )
+    baseline_configs = query_configs(base_query + (
+        lambda c: all((c['flips'] == 0, c['injection'] == 0, c['protection'] == 'none')),
+    ))
+
+    for protection in (
+            'sc',
+            'clipper',
+            'none',
+            'tmr',
+            'radar',
+            'milr',
+            'ranger',
+    ):
+
+        filename = get_storage_filename({'fig': 'rowhammer_recovery',
+                                         'protection': protection},
+                                        extension='.tex', storage='../ubcthesis/data/')
+        with open(filename, mode='w') as data_file:
+            for baseline_config in baseline_configs:
+                data = load(baseline_config, {**DEFAULTS, 'injection': baseline_config['injection']})
+                baseline = data[0]
+                config = copy(baseline_config)
+                config['flips'] = 'rowhammer'
+                config['protection'] = protection
+                print(config)
+                data = load(config, {**DEFAULTS, 'injection': config['injection']})
+                if data:
+                    concat_data = []
+                    for e in data:
+                        concat_data.extend(e)
+                    print(config['model'], *sdc(baseline, concat_data), file=data_file)
+
+
+rewhammer_recovery()
