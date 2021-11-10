@@ -1,8 +1,10 @@
 import os
+import pickle
 from copy import deepcopy
 from itertools import product
 
 from settings import PROBABILITIES
+from storage import get_storage_filename
 
 DOMAIN = {
     'injection': range(400),
@@ -111,4 +113,9 @@ SLURM_ARRAY = query_configs(CONSTRAINTS)
 CONFIG = SLURM_ARRAY[int(os.environ.get('INTERNAL_SLURM_ARRAY_TASK_ID'))]
 
 if __name__ == '__main__':
-    print(len(SLURM_ARRAY), len(SLURM_ARRAY) / 40)
+    file_names = set(get_storage_filename(i, {**DEFAULTS, 'injection': i['injection']}) for i in SLURM_ARRAY)
+    for file_name in file_names:
+        if os.path.exists(file_name):
+            print(file_name, len(pickle.load(open(file_name, mode='rb'))))
+
+    print('configs:', len(SLURM_ARRAY), 'jobs:', len(SLURM_ARRAY) / 40, 'files:', len(file_names))
