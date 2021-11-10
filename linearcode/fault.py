@@ -95,7 +95,7 @@ def inject_memory_fault(model, config):
             for i in range(parameter_index):
                 start += parameters[i].nelement() * bit_width
             while len(bit_indices_to_flip) < config['flips']:
-                bit_indices_to_flip.add(rnd.randint(start, parameters[parameter_index].nelement() * bit_width - 1))
+                bit_indices_to_flip.add(rnd.randint(start, start + parameters[parameter_index].nelement() * bit_width - 1))
         else:
             # sensitivity model
             ber = config['flips']
