@@ -3,6 +3,7 @@ from collections import defaultdict
 from copy import copy
 
 import matplotlib.pyplot as plt
+import numpy
 import torch
 
 from analysis import sdc, merge
@@ -476,4 +477,52 @@ def sdc_protection_scales_with_granularity():
                         print(flips, *sdc(baseline, concat_data), file=data_file)
 
 
-sdc_protection_scales_with_granularity()
+def regression_recovery():
+    base_query = (
+        lambda c: c['dataset'] == 'driving_dataset_test',
+        lambda c: c['sampler'] == 'none',
+        lambda c: not c['quantization'],
+        lambda c: c['model'] == 'e2e',
+    )
+    baseline_configs = query_configs(base_query + (
+        lambda c: all((c['flips'] == 0, c['injection'] == 0, c['protection'] == 'none')),
+    ))
+
+    for baseline_config in baseline_configs:
+        data = load(baseline_config, {**DEFAULTS, 'injection': baseline_config['injection']})
+        baseline = data[0]
+        baseline_losses = [float(e['loss']) for e in baseline]
+        baseline_loss = sum(baseline_losses) / len(baseline_losses)
+        for protection in (
+            # 'sc',
+            # 'clipper',
+            'none',
+            # 'tmr',
+            'radar',
+            # 'milr',
+            # 'ranger',
+        ):
+            filename = get_storage_filename({'fig': 'regression_recovery',
+                                             'model': baseline_config['model'],
+                                             'protection': protection},
+                                            extension='.tex', storage='../ubcthesis/data/')
+            with open(filename, mode='w') as data_file:
+                for flips in DOMAIN['flips']:
+                    if isinstance(flips, int):
+                        continue
+                    config = copy(baseline_config)
+                    config['flips'] = flips
+                    config['protection'] = protection
+                    print(config)
+                    data = load(config, {**DEFAULTS, 'injection': config['injection']})
+                    if data:
+                        concat_data = []
+                        for e in data:
+                            concat_data.extend(e)
+                        losses = [float(e['loss']) for e in concat_data
+                                  if not numpy.isnan(e['loss']) and not numpy.isinf(e['loss'])]
+                        protection_loss = sum(losses) / len(losses)
+                        print(flips, protection_loss / baseline_loss, file=data_file)
+
+
+regression_recovery()
