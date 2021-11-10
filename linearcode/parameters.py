@@ -58,6 +58,7 @@ CONSTRAINTS = (
     lambda c: any((
         all((c['flips'] != 0, isinstance(c['flips'], int))),
         all((c['model'] == 'e2e', c['protection'] == 'radar')),
+        c['protection'] == 'milr',
     )),
 )
 
