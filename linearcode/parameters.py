@@ -53,6 +53,12 @@ CONSTRAINTS = (
         not isinstance(c['flips'], str),
         c['model'] == 'e2e',
     )),
+
+    # retry
+    lambda c: any((
+        all((c['flips'] != 0, isinstance(c['flips'], int))),
+        all((c['model'] == 'e2e', c['protection'] == 'radar')),
+    )),
 )
 
 DEFAULTS = {
