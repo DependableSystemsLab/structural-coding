@@ -1,4 +1,5 @@
 import ctypes
+from matplotlib import pyplot
 
 import numpy.random
 import torch
@@ -7,12 +8,12 @@ import torch.nn.qat
 from injection import bitflip
 from settings import PROBABILITIES
 
-_4KB = 2 ** 10 * 8
+_4KB = 4 * 2 ** 10 * 8
 _2B = 2 * 8
+RANK_AND_CHANNELS_IN_ROW_MODEL = 4
 
 
 def inject_memory_fault(model, config):
-
     rnd = numpy.random.RandomState(config['injection'])
 
     parameters = get_flattened_weights(model)
@@ -32,7 +33,7 @@ def inject_memory_fault(model, config):
             victim_rows = rnd.randint(4, 60)
             vulnerable_cells = 200
             ber = vulnerable_cells / victim_rows / 2 / _4KB
-            for victim_row in range(2 * victim_rows):
+            for affected_page in range(2 * victim_rows):
                 start = rnd.randint(0, pages - 1) * _4KB
                 count = rnd.binomial(_4KB, ber)
                 initial_count = len(bit_indices_to_flip)
@@ -43,7 +44,7 @@ def inject_memory_fault(model, config):
             start = rnd.randint(0, words - 1) * _2B
             bit_indices_to_flip.add(start)
         elif config['flips'] == 'column':
-            number_of_corrupted_chunks = 3
+            number_of_corrupted_chunks = int(0.06 / 2 * pages)
             corrupted_chunk_starts = set()
             while len(corrupted_chunk_starts) < number_of_corrupted_chunks:
                 corrupted_chunk_starts.add(rnd.randint(0, pages - 1) * _4KB)
@@ -64,12 +65,20 @@ def inject_memory_fault(model, config):
         elif config['flips'] == 'row':
             victim_rows = 1
             ber = 0.3
-            for victim_row in range(2 * victim_rows):
-                start = rnd.randint(0, pages - 1) * _4KB
-                count = rnd.binomial(_4KB, ber)
+            affected_rank = rnd.randint(0, RANK_AND_CHANNELS_IN_ROW_MODEL - 1)
+            rank_bits = _4KB // RANK_AND_CHANNELS_IN_ROW_MODEL
+            rank_words = rank_bits // _2B
+            starts = set()
+            while len(starts) < RANK_AND_CHANNELS_IN_ROW_MODEL * 2 * victim_rows:
+                starts.add(rnd.randint(0, pages - 1) * _4KB)
+            for start in starts:
+                count = rnd.binomial(rank_words, ber)
                 initial_count = len(bit_indices_to_flip)
                 while len(bit_indices_to_flip) < count + initial_count:
-                    bit_indices_to_flip.add(rnd.randint(start, start + _4KB - 1))
+                    within_rank_word_index = rnd.randint(0, rank_words - 1)
+                    offset_bits = within_rank_word_index * RANK_AND_CHANNELS_IN_ROW_MODEL * _2B
+                    bit_indices_to_flip.add(start + offset_bits + affected_rank * _2B)
+            granularity = _2B
         elif config['flips'] == 'flr':
             filter_index = config['injection']
             start = 0
@@ -90,12 +99,14 @@ def inject_memory_fault(model, config):
     else:
 
         if config['flips'] // 1 == config['flips']:  # if is integer
-            parameter_index = rnd.choice(range(len(parameters)), 1, p=[p.nelement() * bit_width / size for p in parameters])[0]
+            parameter_index = \
+            rnd.choice(range(len(parameters)), 1, p=[p.nelement() * bit_width / size for p in parameters])[0]
             start = 0
             for i in range(parameter_index):
                 start += parameters[i].nelement() * bit_width
             while len(bit_indices_to_flip) < config['flips']:
-                bit_indices_to_flip.add(rnd.randint(start, start + parameters[parameter_index].nelement() * bit_width - 1))
+                bit_indices_to_flip.add(
+                    rnd.randint(start, start + parameters[parameter_index].nelement() * bit_width - 1))
         else:
             # sensitivity model
             ber = config['flips']
@@ -158,9 +169,10 @@ def flip_bits(bit_indices_to_flip, bit_width, config, modules, parameters, granu
                     short_index = 0
                 else:
                     assert False
-                (2 * ctypes.c_uint16).from_address(all_params[destination].data_ptr())[
+                pointer = (2 * ctypes.c_uint16).from_address(all_params[destination].data_ptr())
+                pointer[
                     short_index
-                ] = rnd.randint(0, 2 ** 16 - 1)
+                ] = ~(2 ** 16 + pointer[short_index])
         o = 0
         for p in parameters:
             p[:] = all_params[o: o + p.nelement()]
@@ -171,10 +183,10 @@ def get_flattened_weights(model):
     parameters = []
     for m in get_target_modules(model):
 
-            weight = m.weight
-            if callable(weight):
-                weight = weight()
-            parameters.append((m, weight.flatten()))
+        weight = m.weight
+        if callable(weight):
+            weight = weight()
+        parameters.append((m, weight.flatten()))
     return parameters
 
 
@@ -191,15 +203,37 @@ def get_target_modules(model):
     return modules
 
 
+def visualize_conv2d_corruption(module: torch.nn.Conv2d, bit_indices):
+    bit_width = 32
+    size = module.weight.nelement() * bit_width
+    pages = size // _4KB
+    kernel_size = module.kernel_size[0] * module.kernel_size[1] * module.in_channels * bit_width
+    unit_size = numpy.gcd(kernel_size, _4KB)
+    addresses = numpy.arange(0, size // unit_size).reshape((pages // 10, 10 * _4KB // unit_size))
+    image = numpy.stack((numpy.zeros(addresses.shape),
+                         addresses // (kernel_size // unit_size) % 2,
+                         addresses // (_4KB // unit_size) % 2)).transpose(1, 2, 0)
+    corrupted_unit_chunks = [i // unit_size for i in sorted(bit_indices)]
+    image[:, :, 0].ravel()[corrupted_unit_chunks] = 1
+    image[:, :, 1].ravel()[corrupted_unit_chunks] = 0
+    image[:, :, 2].ravel()[corrupted_unit_chunks] = 0
+    pyplot.imshow(image)
+    pyplot.show()
+
+
 if __name__ == '__main__':
-    module = torch.nn.Linear(4096, 4096)
+    module = torch.nn.Conv2d(128, 64, (5, 5))
     indices, _ = inject_memory_fault(module, {'quantization': False, 'injection': 0, 'flips': 16})
+    visualize_conv2d_corruption(module, indices)
     assert len(indices) == 16
     indices, _ = inject_memory_fault(module, {'quantization': False, 'injection': 0, 'flips': 0})
+    visualize_conv2d_corruption(module, indices)
     assert len(indices) == 0
     indices, _ = inject_memory_fault(module, {'quantization': False, 'injection': 0, 'flips': PROBABILITIES[0]})
+    visualize_conv2d_corruption(module, indices)
     assert len(indices) > 0
     indices, _ = inject_memory_fault(module, {'quantization': False, 'injection': 0, 'flips': 'rowhammer'})
+    visualize_conv2d_corruption(module, indices)
     indices = sorted(indices)
     corrupted_chunk_indices = set(i // _4KB for i in indices)
     assert len(corrupted_chunk_indices) > 0
@@ -207,14 +241,21 @@ if __name__ == '__main__':
         offset = min(abs(i - chunk_index * _4KB) for chunk_index in corrupted_chunk_indices)
         assert offset < _4KB, offset
     indices, _ = inject_memory_fault(module, {'quantization': False, 'injection': 0, 'flips': 'word'})
+    visualize_conv2d_corruption(module, indices)
     assert max(indices) - min(indices) < _2B
-    indices, _ = inject_memory_fault(module, {'quantization': False, 'injection': 0, 'flips': 'row'})
-    assert len(set(i // _4KB for i in indices)) == 2
-    indices, _ = inject_memory_fault(module, {'quantization': False, 'injection': 0, 'flips': 'column'})
-    assert len(indices) == 3
-    assert all(i % _2B == 0 for i in indices)
-    assert len(set((i // _2B) % (_4KB // _2B) for i in indices)) == 1
+    for injection in range(5):
+        indices, _ = inject_memory_fault(module, {'quantization': False, 'injection': injection, 'flips': 'row'})
+        visualize_conv2d_corruption(module, indices)
+        assert len(set(i // _4KB for i in indices)) == 2 * RANK_AND_CHANNELS_IN_ROW_MODEL
+    for injection in range(5):
+        indices, _ = inject_memory_fault(module, {'quantization': False, 'injection': injection, 'flips': 'column'})
+        visualize_conv2d_corruption(module, indices)
+        assert len(indices) == int(0.06 / 2 * (module.weight.nelement() * 32 // _4KB))
+        assert all(i % _2B == 0 for i in indices)
+        assert len(set((i // _2B) % (_4KB // _2B) for i in indices)) == 1
     indices, size = inject_memory_fault(module, {'quantization': False, 'injection': 0, 'flips': 'bank'})
+    visualize_conv2d_corruption(module, indices)
     assert len(set(i % (64 * _2B) for i in indices)) == 1
     indices, size = inject_memory_fault(module, {'quantization': False, 'injection': 0, 'flips': 'chip'})
+    visualize_conv2d_corruption(module, indices)
     assert len(set(i % (8 * _2B) for i in indices)) == 1
