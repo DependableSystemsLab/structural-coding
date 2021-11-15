@@ -1,4 +1,5 @@
 import ctypes
+import math
 
 import torch
 from torch import Tensor
@@ -69,11 +70,9 @@ def radar_checksum(quantized):
 
 
 def fradar_checksum(weight: Tensor):
-    assert weight.shape[0] % 4 == 0
     assert weight.element_size() == 4
-    allocate_memory = weight[:weight.shape[0] // 4].clone()
-    checksum_array = (ctypes.c_ubyte * (allocate_memory.nelement() * allocate_memory.element_size())).from_address(
-        allocate_memory.data_ptr())
+    allocate_memory = weight.flatten()[:math.ceil(weight.nelement() / 4)].clone()
+    checksum_array = (ctypes.c_ubyte * (allocate_memory.nelement() * allocate_memory.element_size())).from_address(allocate_memory.data_ptr())
     original_array = (ctypes.c_ubyte * (weight.nelement() * weight.element_size())).from_address(weight.data_ptr())
     for i in range(0, weight.nelement(), 4):
         checksum_array[i // 4] = original_array[i]
@@ -88,11 +87,8 @@ def recover_with_fradar(weight: Tensor):
     original_shape = weight.shape
     weight = weight.flatten()
     calculated_checksum = fradar_checksum(weight)
-    checksum_array = (ctypes.c_ubyte * (checksum.nelement() * checksum.element_size())).from_address(
-        checksum.data_ptr())
-    calculated_checksum_array = (
-                ctypes.c_ubyte * (calculated_checksum.nelement() * calculated_checksum.element_size())).from_address(
-        calculated_checksum.data_ptr())
+    checksum_array = (ctypes.c_ubyte * (checksum.nelement() * checksum.element_size())).from_address(checksum.data_ptr())
+    calculated_checksum_array = (ctypes.c_ubyte * (calculated_checksum.nelement() * calculated_checksum.element_size())).from_address(calculated_checksum.data_ptr())
     result_array = (ctypes.c_ubyte * (weight.nelement() * weight.element_size())).from_address(weight.data_ptr())
     for i in range(0, weight.nelement(), 4):
         if checksum_array[i // 4] != calculated_checksum_array[i // 4]:

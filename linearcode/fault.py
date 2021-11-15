@@ -182,11 +182,13 @@ def flip_bits(bit_indices_to_flip, bit_width, config, modules, parameters, granu
 def get_flattened_weights(model):
     parameters = []
     for m in get_target_modules(model):
-
         weight = m.weight
         if callable(weight):
             weight = weight()
         parameters.append((m, weight.flatten()))
+        if hasattr(m, 'weight_redundancy'):
+            weight_redundancy = m.weight_redundancy
+            parameters.append((m, weight_redundancy))
     return parameters
 
 

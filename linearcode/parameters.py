@@ -1,8 +1,10 @@
 import os
+import pickle
 from copy import deepcopy
 from itertools import product
 
 from settings import PROBABILITIES
+from storage import get_storage_filename
 
 DOMAIN = {
     'injection': range(400),
@@ -30,6 +32,7 @@ DOMAIN = {
               'row',
               # 'bank',
               # 'chip',
+              # 'flr',
               'rowhammer'),
     'protection': ('none', 'clipper', 'ranger', 'sc', 'radar', 'milr', 'flr_mr', 'tmr'),
 }
@@ -42,22 +45,17 @@ CONSTRAINTS = (
         all((c['dataset'] == 'driving_dataset_test', c['model'] == 'e2e'))
     )),
     lambda c: c['sampler'] == 'none',
-    lambda c: any((c['flips'] != 0, all((c['injection'] == 0, c['protection'] == 'none')))),
     # ensure baseline execution
+    lambda c: any((c['flips'] != 0, all((c['injection'] == 0, c['protection'] == 'none')))),
     lambda c: c['protection'] in ('sc', 'none', 'clipper', 'tmr', 'radar', 'milr', 'ranger'),
     lambda c: c['model'] not in ('vgg19', ),
     lambda c: not c['quantization'],
 
     # retry
     lambda c: any((
-        not isinstance(c['flips'], str),
-        c['model'] == 'e2e',
-    )),
-
-    # retry
-    lambda c: any((
         all((c['flips'] != 0, isinstance(c['flips'], int))),
         all((c['model'] == 'e2e', c['protection'] == 'radar')),
+        c['protection'] == 'milr',
     )),
 )
 
@@ -109,4 +107,9 @@ SLURM_ARRAY = query_configs(CONSTRAINTS)
 CONFIG = SLURM_ARRAY[int(os.environ.get('INTERNAL_SLURM_ARRAY_TASK_ID'))]
 
 if __name__ == '__main__':
-    print(len(SLURM_ARRAY), len(SLURM_ARRAY) / 40)
+    file_names = set(get_storage_filename(i, {**DEFAULTS, 'injection': i['injection']}) for i in SLURM_ARRAY)
+    for file_name in file_names:
+        if os.path.exists(file_name):
+            print(file_name)
+
+    print('configs:', len(SLURM_ARRAY), 'jobs:', len(SLURM_ARRAY) / 40, 'files:', len(file_names))
