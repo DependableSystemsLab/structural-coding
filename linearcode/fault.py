@@ -30,7 +30,7 @@ def inject_memory_fault(model, config):
         return bit_indices_to_flip, size
     if isinstance(config['flips'], str):
         if config['flips'] == 'rowhammer':
-            victim_rows = rnd.randint(4, 60)
+            victim_rows = rnd.randint(4, 30)
             vulnerable_cells = 200
             ber = vulnerable_cells / victim_rows / 2 / _4KB
             for affected_page in range(2 * victim_rows):
