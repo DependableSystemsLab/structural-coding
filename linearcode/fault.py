@@ -31,7 +31,7 @@ def inject_memory_fault(model, config):
     if isinstance(config['flips'], str):
         if config['flips'] == 'rowhammer':
             victim_rows = rnd.randint(4, 35)
-            ber = PROBABILITIES[0]
+            ber = 9.2e-2
             for affected_page in range(2 * victim_rows):
                 start = rnd.randint(0, pages - 1) * _4KB
                 count = rnd.binomial(_4KB, ber)
