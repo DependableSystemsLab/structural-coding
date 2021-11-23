@@ -99,7 +99,7 @@ def inject_memory_fault(model, config):
 
         if config['flips'] // 1 == config['flips']:  # if is integer
             parameter_index = \
-            rnd.choice(range(len(parameters)), 1, p=[p.nelement() * bit_width / size for p in parameters])[0]
+                rnd.choice(range(len(parameters)), 1, p=[p.nelement() * bit_width / size for p in parameters])[0]
             start = 0
             for i in range(parameter_index):
                 start += parameters[i].nelement() * bit_width
@@ -213,28 +213,45 @@ def visualize_conv2d_corruption(module: torch.nn.Conv2d, bit_indices):
     addresses = numpy.arange(0, size // unit_size).reshape((pages // 10, 10 * _4KB // unit_size))
     image = numpy.stack((numpy.zeros(addresses.shape),
                          addresses // (kernel_size // unit_size) % 2,
-                         addresses // (_4KB // unit_size) % 2)).transpose(1, 2, 0)
+                         addresses // (kernel_size // unit_size) // 2 % 2,
+                         )).transpose(1, 2, 0)
     corrupted_unit_chunks = [i // unit_size for i in sorted(bit_indices)]
     image[:, :, 0].ravel()[corrupted_unit_chunks] = 1
     image[:, :, 1].ravel()[corrupted_unit_chunks] = 0
     image[:, :, 2].ravel()[corrupted_unit_chunks] = 0
-    pyplot.imshow(image)
+    pyplot.imshow(image, aspect=2)
+
+    pyplot.hlines(y=numpy.arange(0, 20) - 0.5,
+                  xmin=numpy.full(20, 0) - 0.5,
+                  xmax=numpy.full(20, 80) - 0.5,
+                  color="white")
+    pyplot.vlines(x=numpy.arange(0, 10) * (_4KB // unit_size) - 0.5,
+                  ymin=numpy.full(10, 0) - 0.5,
+                  ymax=numpy.full(10, 20) - 0.5,
+                  color="white")
+    pyplot.tick_params(
+        axis='both',
+        labelbottom=False,
+        labelleft=False,
+        bottom=False,
+        left=False,
+    )
     pyplot.show()
 
 
 if __name__ == '__main__':
     module = torch.nn.Conv2d(128, 64, (5, 5))
     indices, _ = inject_memory_fault(module, {'quantization': False, 'injection': 0, 'flips': 16})
-    visualize_conv2d_corruption(module, indices)
+    # visualize_conv2d_corruption(module, indices)
     assert len(indices) == 16
     indices, _ = inject_memory_fault(module, {'quantization': False, 'injection': 0, 'flips': 0})
-    visualize_conv2d_corruption(module, indices)
+    # visualize_conv2d_corruption(module, indices)
     assert len(indices) == 0
     indices, _ = inject_memory_fault(module, {'quantization': False, 'injection': 0, 'flips': PROBABILITIES[0]})
-    visualize_conv2d_corruption(module, indices)
+    # visualize_conv2d_corruption(module, indices)
     assert len(indices) > 0
     indices, _ = inject_memory_fault(module, {'quantization': False, 'injection': 0, 'flips': 'rowhammer'})
-    visualize_conv2d_corruption(module, indices)
+    # visualize_conv2d_corruption(module, indices)
     indices = sorted(indices)
     corrupted_chunk_indices = set(i // _4KB for i in indices)
     assert len(corrupted_chunk_indices) > 0
@@ -242,7 +259,7 @@ if __name__ == '__main__':
         offset = min(abs(i - chunk_index * _4KB) for chunk_index in corrupted_chunk_indices)
         assert offset < _4KB, offset
     indices, _ = inject_memory_fault(module, {'quantization': False, 'injection': 0, 'flips': 'word'})
-    visualize_conv2d_corruption(module, indices)
+    # visualize_conv2d_corruption(module, indices)
     assert max(indices) - min(indices) < _2B
     for injection in range(5):
         indices, _ = inject_memory_fault(module, {'quantization': False, 'injection': injection, 'flips': 'row'})
@@ -250,13 +267,13 @@ if __name__ == '__main__':
         assert len(set(i // _4KB for i in indices)) == 2 * RANK_AND_CHANNELS_IN_ROW_MODEL
     for injection in range(5):
         indices, _ = inject_memory_fault(module, {'quantization': False, 'injection': injection, 'flips': 'column'})
-        visualize_conv2d_corruption(module, indices)
+        # visualize_conv2d_corruption(module, indices)
         assert len(indices) == int(0.06 / 2 * (module.weight.nelement() * 32 // _4KB))
         assert all(i % _2B == 0 for i in indices)
         assert len(set((i // _2B) % (_4KB // _2B) for i in indices)) == 1
     indices, size = inject_memory_fault(module, {'quantization': False, 'injection': 0, 'flips': 'bank'})
-    visualize_conv2d_corruption(module, indices)
+    # visualize_conv2d_corruption(module, indices)
     assert len(set(i % (64 * _2B) for i in indices)) == 1
     indices, size = inject_memory_fault(module, {'quantization': False, 'injection': 0, 'flips': 'chip'})
-    visualize_conv2d_corruption(module, indices)
+    # visualize_conv2d_corruption(module, indices)
     assert len(set(i % (8 * _2B) for i in indices)) == 1
