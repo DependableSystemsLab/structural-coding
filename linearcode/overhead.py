@@ -1,71 +1,61 @@
+# sudo sh -c 'echo -1 >/proc/sys/kernel/perf_event_paranoid'
+
+
 import torch
 import torchvision.models
 from torch import FloatTensor
 from pypapi import papi_high
 from pypapi import events as papi_events
 
+from common.models import MODEL_CLASSES
 from injection import convert, StructuralCodedConv2d, StructuralCodedLinear, ClipperReLU
 
-for i in range(32, 257):
-    inp = torch.randn(16, 32, 229, 229)
-    w = torch.randn(i, 32, 4, 5)
-    papi_high.start_counters([papi_events.PAPI_FP_OPS])
-    torch.conv2d(inp, w)
-    print(i, papi_high.stop_counters()[0], sep=',')
-exit()
+# for i in range(32, 257):
+#     inp = torch.randn(16, 32, 229, 229)
+#     w = torch.randn(i, 32, 4, 5)
+#     papi_high.start_counters([papi_events.PAPI_FP_OPS])
+#     torch.conv2d(inp, w)
+#     print(i, papi_high.stop_counters()[0], sep=',')
+# exit()
+from linearcode.protection import PROTECTIONS
 
 torch.random.manual_seed(0)
-image = torch.rand((1, 3, 299, 299))
+imagenet_image = torch.rand((1, 3, 299, 299))
+e2e_image = torch.rand((1, 3, 200, 66))
+n = 256
 
-print('k', end=',')
 
-model_classes = (
-    torchvision.models.vgg16,
-    torchvision.models.resnet50,
-    torchvision.models.alexnet,
-)
-for model_class in model_classes:
-    print(model_class.__name__ + '-clipper',model_class.__name__ + '-sc-detection',model_class.__name__ + '-sc-correction', end=',', sep=',')
-print()
+def flops(input_image, _model):
+    overhead = 0
+    for _ in range(5):
+        input_image = torch.rand(input_image.shape)
+        input_image = input_image.double()
+        papi_high.start_counters([papi_events.PAPI_DP_OPS])
+        # papi_high.start_counters([papi_events.PAPI_SP_OPS])
+        _model.forward(input_image)
+        overhead = max(overhead, papi_high.stop_counters()[0])
+    return overhead
+
+
 for k in (1, 2, 4, 8, 16, 32):
-    print(k, end=',')
     with torch.no_grad():
-        for model_class in model_classes:
+        for model_name, model_class in MODEL_CLASSES:
+            if model_name == 'e2e':
+                image = e2e_image
+            else:
+                image = imagenet_image
             model = model_class()
-            papi_high.start_counters([papi_events.PAPI_SP_OPS])
-            model.forward(image)
-            baseline_flops = papi_high.stop_counters()[0]
+            model = model.double()
 
-            clipper_model, max_injection_index = convert(model, mapping={
-                torch.nn.ReLU: ClipperReLU
-            })
+            baseline_flops = flops(image, model)
+            sc_normalized_model = PROTECTIONS['before_quantization']['sc'](model, None)
+            sc_detection_model = PROTECTIONS['after_quantization']['sc'](sc_normalized_model, {'flips': 1})
+            sc_correction_model = PROTECTIONS['after_quantization']['sc'](sc_detection_model, {'flips': k})
 
-            relu_counter = 0
-            for j, m in enumerate(clipper_model.modules()):
-                if isinstance(m, torch.nn.ReLU):
-                    m.bounds = 0, 50
-                    m.module_index = relu_counter
-                    relu_counter += 1
+            sc_detection_flops = flops(image, sc_detection_model)
+            sc_normalization_flops = flops(image, sc_normalized_model)
 
-            papi_high.start_counters([papi_events.PAPI_SP_OPS])
-            clipper_model.forward(image)
-            clipper_flops = papi_high.stop_counters()[0]
-
-            n = 256
-            sc_model, _ = convert(model, mapping={
-                torch.nn.Conv2d: StructuralCodedConv2d,
-                torch.nn.Linear: StructuralCodedLinear,
-            }, extra_kwargs={
-                'k': k,
-                'threshold': 1,
-                'n': n
-            })
-
-            papi_high.start_counters([papi_events.PAPI_SP_OPS])
-            sc_model.forward(image)
-            sc_detection_flops = papi_high.stop_counters()[0]
-
-            params = sorted(list(p for p in sc_model.parameters() if len(p.shape) > 2), key=lambda p: p.flatten().shape[0] / p.shape[0], reverse=True)
+            params = sorted(list(p for p in sc_correction_model.parameters() if len(p.shape) > 2), key=lambda p: p.flatten().shape[0] / p.shape[0], reverse=True)
 
             for i in range(k):
                 if len(params[0].shape) > 2:
@@ -73,11 +63,11 @@ for k in (1, 2, 4, 8, 16, 32):
                 else:
                     params[0][:, i * (n + k) % params[0].shape[0]] = 1e16
 
-            papi_high.start_counters([papi_events.PAPI_SP_OPS])
-            sc_model.forward(image)
-            sc_recovery_flops = papi_high.stop_counters()[0]
+            sc_correction_flops = flops(image, sc_correction_model)
 
-            print(100 * (clipper_flops - baseline_flops) / baseline_flops,
-                  100 * (sc_detection_flops - baseline_flops) / baseline_flops,
-                  100 * (sc_recovery_flops - baseline_flops) / baseline_flops, sep=',', end=',')
+            print(model_name,
+                  # 100 * (sc_normalization_flops / baseline_flops - 1),
+                  100 * (sc_detection_flops / sc_normalization_flops - 1),
+                  100 * (sc_correction_flops / sc_normalization_flops - 1))
+
     print()
