@@ -41,7 +41,7 @@ for model_name, model_class in MODEL_CLASSES:
         p_iterator = iter(params)
         parameter = next(p_iterator)
         offset = 0
-        print(0, baseline)
+        print(0, baseline, file=correction_file)
         for i in range(1, 11):
             while (i - offset) * (n + k) > parameter.shape[0]:
                 parameter = next(p_iterator)
