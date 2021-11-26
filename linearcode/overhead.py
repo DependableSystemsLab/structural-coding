@@ -35,6 +35,19 @@ def flops(input_image, _model):
 
 detection_filename = get_storage_filename({'fig': 'detection_flops_overhead'},
                                           extension='.tex', storage='../ubcthesis/data/')
+
+memory_filename = get_storage_filename({'fig': 'memory_overhead'},
+                                          extension='.tex', storage='../ubcthesis/data/')
+
+with open(memory_filename, mode='w') as memory_file:
+    for model_name, model_class in MODEL_CLASSES:
+        model = model_class().double()
+        sc_normalized_model = PROTECTIONS['before_quantization']['sc'](model, None)
+        sc_correction_model = PROTECTIONS['after_quantization']['sc'](sc_normalized_model, {'flips': 32})
+        correction_size = sum(p.nelement() for p in sc_correction_model.parameters())
+        model_size = sum(p.nelement() for p in model.parameters())
+        print(model_name, 100 * (correction_size / model_size - 1), file=memory_file)
+
 with open(detection_filename, mode='w') as detection_file:
     for model_name, model_class in MODEL_CLASSES:
         if model_name != 'shufflenet':
@@ -42,7 +55,6 @@ with open(detection_filename, mode='w') as detection_file:
         correction_filename = get_storage_filename({'fig': 'correction_flops_overhead',
                                                     'model': model_name},
                                                    extension='.tex', storage='../ubcthesis/data/')
-
         with open(correction_filename, mode='w') as correction_file:
             with torch.no_grad():
 
@@ -57,8 +69,8 @@ with open(detection_filename, mode='w') as detection_file:
                 image = image.double()
 
                 baseline_flops = flops(image, model)
-                # sc_normalized_model = PROTECTIONS['before_quantization']['sc'](model, None)
-                sc_normalized_model = model
+                sc_normalized_model = PROTECTIONS['before_quantization']['sc'](model, None)
+                # sc_normalized_model = model
                 sc_detection_model = PROTECTIONS['after_quantization']['sc'](sc_normalized_model, {'flips': 1})
                 sc_detection_flops = flops(image, sc_detection_model)
 
