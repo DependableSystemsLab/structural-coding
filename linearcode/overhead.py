@@ -26,26 +26,24 @@ n = 256
 
 
 def flops(input_image, _model):
-    overhead = 0
-    for _ in range(5):
-        input_image = torch.rand(input_image.shape)
-        input_image = input_image.double()
-        papi_high.start_counters([papi_events.PAPI_DP_OPS])
-        # papi_high.start_counters([papi_events.PAPI_SP_OPS])
-        _model.forward(input_image)
-        overhead = max(overhead, papi_high.stop_counters()[0])
-    return overhead
+    papi_high.start_counters([papi_events.PAPI_DP_OPS])
+    # papi_high.start_counters([papi_events.PAPI_SP_OPS])
+    _model.forward(input_image)
+    return papi_high.stop_counters()[0]
 
 
 for k in (1, 2, 4, 8, 16, 32):
     with torch.no_grad():
         for model_name, model_class in MODEL_CLASSES:
+            # if model_name not in ('shufflenet', ):
+            #     continue
             if model_name == 'e2e':
                 image = e2e_image
             else:
                 image = imagenet_image
             model = model_class()
             model = model.double()
+            image = image.double()
 
             baseline_flops = flops(image, model)
             sc_normalized_model = PROTECTIONS['before_quantization']['sc'](model, None)
@@ -67,7 +65,7 @@ for k in (1, 2, 4, 8, 16, 32):
 
             print(model_name,
                   # 100 * (sc_normalization_flops / baseline_flops - 1),
-                  100 * (sc_detection_flops / sc_normalization_flops - 1),
-                  100 * (sc_correction_flops / sc_normalization_flops - 1))
+                  100 * (sc_detection_flops / baseline_flops - 1),
+                  100 * (sc_correction_flops / baseline_flops - 1))
 
     print()

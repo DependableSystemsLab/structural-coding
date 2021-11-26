@@ -16,8 +16,8 @@ def apply_sc(model, config):
         torch.nn.qat.Conv2d: QStructuralCodedConv2d,
         torch.nn.Linear: StructuralCodedLinear,
         torch.nn.qat.Linear: QStructuralCodedLinear,
-    }, in_place=True, extra_kwargs={
-        'k': 32,
+    }, extra_kwargs={
+        'k': k,
         'threshold': 1,
         'n': 256
     })
