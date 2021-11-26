@@ -26,11 +26,12 @@ class ErasureCode:
 
 class StructuralCode:
 
-    def __init__(self, n, k, threshold=0) -> None:
+    def __init__(self, n, k, threshold=0, double=False) -> None:
         self.n = n
         self.k = k
         self._weights = None
         self.threshold = threshold
+        self.double = double
 
     def _code(self, tensor: Tensor, dim: int = 0, weight_stop=None, weights=None) -> Tensor:
         if weights is None:
@@ -100,12 +101,13 @@ class StructuralCode:
 
         return self.out_transform(reconstructed_erasure, 0, dim)
 
-
     def _generate_redundant_weights(self) -> Tensor:
         if self._weights is None:
             rnd = numpy.random.RandomState(2021)
-            self._weights = torch.DoubleTensor(rnd.rand(self.n, self.k))
-            # self._weights = torch.FloatTensor(rnd.rand(self.n, self.k))
+            if self.double:
+                self._weights = torch.DoubleTensor(rnd.rand(self.n, self.k))
+            else:
+                self._weights = torch.FloatTensor(rnd.rand(self.n, self.k))
             self._weights[:, 0] = 1
         return torch.clone(self._weights)
 
