@@ -104,7 +104,8 @@ class StructuralCode:
     def _generate_redundant_weights(self) -> Tensor:
         if self._weights is None:
             rnd = numpy.random.RandomState(2021)
-            self._weights = torch.FloatTensor(rnd.rand(self.n, self.k))
+            self._weights = torch.DoubleTensor(rnd.rand(self.n, self.k))
+            # self._weights = torch.FloatTensor(rnd.rand(self.n, self.k))
             self._weights[:, 0] = 1
         return torch.clone(self._weights)
 
