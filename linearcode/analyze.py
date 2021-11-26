@@ -325,7 +325,7 @@ def draw_precision():
 # plt.show()
 
 
-def sdc_protection_scales_with_ber():
+def _sdc_protection_scales_with_ber():
     base_query = (
         lambda c: c['dataset'] == 'imagenet_ds_128',
         lambda c: c['sampler'] == 'none',
@@ -612,15 +612,11 @@ def sdc_protection_scales_with_faults():
                         print(flips, *sdc(baseline, concat_data), file=data_file)
 
 
-sdc_protection_scales_with_faults()
-
-
 def sdc_protection_scales_with_ber():
     base_query = (
         lambda c: c['dataset'] == 'imagenet_ds_128',
         lambda c: c['sampler'] == 'none',
         lambda c: not c['quantization'],
-        lambda c: isinstance(c['flips'], float),
         lambda c: not c['model'] in ('e2e', 'vgg19'),
         # lambda c: c['model'] in ("alexnet", 'mobilenet'),
     )
@@ -640,15 +636,13 @@ def sdc_protection_scales_with_ber():
             'milr',
             'ranger',
         ):
-            if not isinstance(protection, float):
-                continue
             filename = get_storage_filename({'fig': 'sdc_protection_scales_with_ber',
                                              'model': baseline_config['model'],
                                              'protection': protection},
                                             extension='.tex', storage='../ubcthesis/data/')
             with open(filename, mode='w') as data_file:
                 for flips in DOMAIN['flips']:
-                    if not isinstance(flips, int) or flips == 0:
+                    if not isinstance(flips, float):
                         continue
                     config = copy(baseline_config)
                     config['flips'] = flips
