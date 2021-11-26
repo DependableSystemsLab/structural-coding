@@ -571,7 +571,7 @@ class NormalizedConv2d(torch.nn.Module):
 
     def __init__(self, original):
         super().__init__()
-        self.groups = 1
+        self.groups = original.groups
         group_in_channels = original.in_channels // original.groups
         self.group_in_channels = group_in_channels
         if group_in_channels > 64:
@@ -588,7 +588,7 @@ class NormalizedConv2d(torch.nn.Module):
                                               group_out_channels,
                                               original.kernel_size,
                                               original.stride,
-                                              original.padding, original.dilation, original.groups, original.bias is not None,
+                                              original.padding, original.dilation, 1, original.bias is not None,
                                               original.padding_mode)
                 group_base_index = i * group_in_channels
                 division_base_index = j * division_in_channels

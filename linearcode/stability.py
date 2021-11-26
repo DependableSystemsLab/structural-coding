@@ -2,6 +2,7 @@ import torch
 
 from common.models import MODEL_CLASSES
 from datasets import get_image_net
+from injection import convert
 from linearcode.protection import PROTECTIONS
 from storage import get_storage_filename
 
@@ -16,12 +17,13 @@ def get_accuracy(m):
     for x, y in data_loader:
         correct += int(torch.sum(torch.topk(m(x), 1).indices.squeeze() == y))
         total += len(x)
+        print(total)
     return correct / total
 
 
 for model_name, model_class in MODEL_CLASSES:
 
-    if model_name == 'e2e':
+    if model_name in ('e2e', 'alexnet', 'vgg19', 'squeezenet'):
         continue
 
     correction_filename = get_storage_filename({'fig': 'stability',
@@ -32,9 +34,7 @@ for model_name, model_class in MODEL_CLASSES:
         model.eval()
 
         baseline = get_accuracy(model)
-        sc_normalized_model = PROTECTIONS['before_quantization']['sc'](model, None)
-        sc_correction_model = PROTECTIONS['after_quantization']['sc'](sc_normalized_model, {'flips': k})
-
+        sc_correction_model = PROTECTIONS['after_quantization']['sc'](model, {'flips': k})
         params = sorted(list(p for p in sc_correction_model.parameters() if len(p.shape) > 1),
                         key=lambda p: p.flatten().shape[0] / p.shape[0], reverse=True)
 
