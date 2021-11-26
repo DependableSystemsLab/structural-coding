@@ -1,5 +1,5 @@
 # sudo sh -c 'echo -1 >/proc/sys/kernel/perf_event_paranoid'
-
+from time import time
 
 import torch
 import torchvision.models
@@ -37,6 +37,8 @@ detection_filename = get_storage_filename({'fig': 'detection_flops_overhead'},
                                           extension='.tex', storage='../ubcthesis/data/')
 with open(detection_filename, mode='w') as detection_file:
     for model_name, model_class in MODEL_CLASSES:
+        if model_name != 'shufflenet':
+            continue
         correction_filename = get_storage_filename({'fig': 'correction_flops_overhead',
                                                     'model': model_name},
                                                    extension='.tex', storage='../ubcthesis/data/')
@@ -48,7 +50,9 @@ with open(detection_filename, mode='w') as detection_file:
                     image = e2e_image
                 else:
                     image = imagenet_image
-                model = model_class()
+                now = time()
+                model = model_class(pretrained=True)
+                print(time() - now)
                 model = model.double()
                 image = image.double()
 
@@ -80,7 +84,9 @@ with open(detection_filename, mode='w') as detection_file:
                             offset = i
                         parameter[(i - offset) * (n + k) % parameter.shape[0]] = 1e16
 
+                    now = time()
                     sc_correction_flops = flops(image, sc_correction_model)
+                    print(time() - now)
 
                     print(k,
                           100 * (sc_correction_flops / baseline_flops - 1), file=correction_file)
