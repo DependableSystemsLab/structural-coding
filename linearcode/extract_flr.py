@@ -28,8 +28,14 @@ for model_name, model_class in MODEL_CLASSES:
 
     baseline_losses = {}
     injection_losses = {}
+    counter = 0
     for b in baseline:
-        baseline_losses[b[0]['config']['injection']] = b[0]['loss']
+        injection_ = b[0]['config']['injection']
+        if injection_ in baseline_losses:
+            counter += 1
+        baseline_losses[injection_] = b[0]['loss']
+    print(counter, len(baseline_losses))
+    # exit()
     for i in injection:
         injection_losses[i[0]['config']['injection']] = i[0]['loss']
 
