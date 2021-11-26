@@ -252,21 +252,25 @@ class StructuralCodedConv2d(torch.nn.Conv2d):
         instance.weight = torch.nn.Parameter(coded_weights)
         checksum_tensors = (instance.weight,)
         if original.bias is not None:
-            coded_bias = instance.sc.code(original.bias)
-            instance.bias = torch.nn.Parameter(coded_bias)
-            checksum_tensors += (instance.bias,)
+            # coded_bias = instance.sc.code(original.bias)
+            # instance.bias = torch.nn.Parameter(coded_bias)
+            instance.bias = torch.nn.Parameter(original.bias)
+            # checksum_tensors += (instance.bias,)
         instance.simple_checksum_tensors = checksum_tensors
         instance.simple_checksum = instance.ec.checksum(instance.simple_checksum_tensors)
         return instance
 
     def forward(self, input: Tensor) -> Tensor:
-        redundant_feature_maps = super().forward(input)
-        decoded = self.sc.decode(redundant_feature_maps, dim=1)
-        if decoded is not None:
-            return decoded
-        self.detected = True
-        erasure = self.ec.erasure(self.simple_checksum_tensors, self.simple_checksum)
-        return self.sc.decode(redundant_feature_maps, 1, erasure)
+        redundant_feature_maps = self.weight
+        decoded = self.sc.decode(redundant_feature_maps, dim=0)
+        if decoded is None:
+            self.detected = True
+            erasure = self.ec.erasure(self.simple_checksum_tensors, self.simple_checksum)
+            self.weight[:] = self.sc.code(self.sc.decode(redundant_feature_maps, 0, erasure), 0)
+        return super().forward(input)
+
+    def _conv_forward(self, input: Tensor, weight: Tensor, bias: Optional[Tensor]):
+        return super()._conv_forward(input, weight[:self.out_channels], bias)
 
 
 class QStructuralCodedConv2d(torch.nn.qat.Conv2d):
@@ -570,7 +574,7 @@ class NormalizedConv2d(torch.nn.Module):
 
     def __init__(self, original):
         super().__init__()
-        self.groups = original.groups
+        self.groups = 1
         group_in_channels = original.in_channels // original.groups
         self.group_in_channels = group_in_channels
         if group_in_channels > 64:
@@ -587,7 +591,7 @@ class NormalizedConv2d(torch.nn.Module):
                                               group_out_channels,
                                               original.kernel_size,
                                               original.stride,
-                                              original.padding, original.dilation, 1, original.bias is not None,
+                                              original.padding, original.dilation, original.groups, original.bias is not None,
                                               original.padding_mode)
                 group_base_index = i * group_in_channels
                 division_base_index = j * division_in_channels
@@ -598,6 +602,9 @@ class NormalizedConv2d(torch.nn.Module):
                     convolution.bias = torch.nn.Parameter(original.bias[group_base_index: group_base_index + group_out_channels] / divisions)
                 convolution.weight = torch.nn.Parameter(weights)
                 self.__setattr__('conv_{}_{}'.format(i, j), convolution)
+        print(original)
+        print(self)
+        print()
 
     def forward(self, input: Tensor) -> Tensor:
         result = []

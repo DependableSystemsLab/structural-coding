@@ -33,16 +33,14 @@ def flops(input_image, _model):
     return papi_high.stop_counters()[0]
 
 
-for model_name, model_class in MODEL_CLASSES:
-    if model_name != 'mobilenet':
-        continue
-    correction_filename = get_storage_filename({'fig': 'correction_flops_overhead',
-                                                'model': model_name},
-                                               extension='.tex', storage='../ubcthesis/data/')
+detection_filename = get_storage_filename({'fig': 'detection_flops_overhead'},
+                                          extension='.tex', storage='../ubcthesis/data/')
+with open(detection_filename, mode='w') as detection_file:
+    for model_name, model_class in MODEL_CLASSES:
+        correction_filename = get_storage_filename({'fig': 'correction_flops_overhead',
+                                                    'model': model_name},
+                                                   extension='.tex', storage='../ubcthesis/data/')
 
-    detection_filename = get_storage_filename({'fig': 'detection_flops_overhead'},
-                                              extension='.tex', storage='../ubcthesis/data/')
-    with open(detection_filename, mode='w') as detection_file:
         with open(correction_filename, mode='w') as correction_file:
             with torch.no_grad():
 
@@ -55,7 +53,8 @@ for model_name, model_class in MODEL_CLASSES:
                 image = image.double()
 
                 baseline_flops = flops(image, model)
-                sc_normalized_model = PROTECTIONS['before_quantization']['sc'](model, None)
+                # sc_normalized_model = PROTECTIONS['before_quantization']['sc'](model, None)
+                sc_normalized_model = model
                 sc_detection_model = PROTECTIONS['after_quantization']['sc'](sc_normalized_model, {'flips': 1})
                 sc_detection_flops = flops(image, sc_detection_model)
 
@@ -63,7 +62,7 @@ for model_name, model_class in MODEL_CLASSES:
                       100 * (sc_detection_flops / baseline_flops - 1), file=detection_file)
                 detection_file.flush()
 
-                for k in (1, 2, 4, 8, 16, 32):
+                for k in (1, 2, 4, 8):
 
                     sc_correction_model = PROTECTIONS['after_quantization']['sc'](sc_normalized_model, {'flips': 32})
 
