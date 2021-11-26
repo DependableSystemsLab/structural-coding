@@ -260,17 +260,14 @@ class StructuralCodedConv2d(torch.nn.Conv2d):
         instance.simple_checksum = instance.ec.checksum(instance.simple_checksum_tensors)
         return instance
 
-    def forward(self, input: Tensor) -> Tensor:
-        redundant_feature_maps = self.weight
-        decoded = self.sc.decode(redundant_feature_maps, dim=0)
+    def _conv_forward(self, input: Tensor, weight: Tensor, bias: Optional[Tensor]):
+        decoded = self.sc.decode(self.weight, dim=0)
         if decoded is None:
             self.detected = True
             erasure = self.ec.erasure(self.simple_checksum_tensors, self.simple_checksum)
-            self.weight[:] = self.sc.code(self.sc.decode(redundant_feature_maps, 0, erasure), 0)
-        return super().forward(input)
-
-    def _conv_forward(self, input: Tensor, weight: Tensor, bias: Optional[Tensor]):
-        return super()._conv_forward(input, weight[:self.out_channels], bias)
+            decoded = self.sc.decode(self.weight, 0, erasure)
+            self.weight[:] = self.sc.code(decoded, 0)
+        return super()._conv_forward(input, decoded, bias)
 
 
 class QStructuralCodedConv2d(torch.nn.qat.Conv2d):
@@ -602,9 +599,6 @@ class NormalizedConv2d(torch.nn.Module):
                     convolution.bias = torch.nn.Parameter(original.bias[group_base_index: group_base_index + group_out_channels] / divisions)
                 convolution.weight = torch.nn.Parameter(weights)
                 self.__setattr__('conv_{}_{}'.format(i, j), convolution)
-        print(original)
-        print(self)
-        print()
 
     def forward(self, input: Tensor) -> Tensor:
         result = []
