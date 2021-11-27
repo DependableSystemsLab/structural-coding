@@ -8,17 +8,14 @@ from storage import load
 
 for model_name, model_class in MODEL_CLASSES:
 
-    if model_name != 'squeezenet':
-        continue
-
     baseline = load({'dataset': 'imagenet_as_i',
                      'flips': 0,
-                     'model': 'resnet50',
+                     'model': model_name,
                      'protection': 'none'})
 
     injection = load({'dataset': 'imagenet_as_i',
                       'flips': 'flr',
-                      'model': 'resnet50',
+                      'model': model_name,
                       'protection': 'none'})
 
     if model_name in ('e2e', 'vgg19'):
