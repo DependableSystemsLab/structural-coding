@@ -47,16 +47,11 @@ CONSTRAINTS = (
     lambda c: c['sampler'] == 'none',
     # ensure baseline execution
     lambda c: any((c['flips'] != 0, all((c['injection'] == 0, c['protection'] == 'none')))),
+    # only baseline
+    lambda c: isinstance(c['flips'], str),
     lambda c: c['protection'] in ('sc', 'none', 'clipper', 'tmr', 'radar', 'milr', 'ranger'),
     lambda c: c['model'] not in ('vgg19', ),
     lambda c: not c['quantization'],
-
-    # retry
-    lambda c: any((
-        all((c['flips'] != 0, isinstance(c['flips'], int))),
-        all((c['model'] == 'e2e', c['protection'] == 'radar')),
-        c['protection'] == 'milr',
-    )),
 )
 
 DEFAULTS = {
