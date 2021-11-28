@@ -267,6 +267,7 @@ class StructuralCodedConv2d(torch.nn.Conv2d):
             erasure = self.ec.erasure(self.simple_checksum_tensors, self.simple_checksum)
             decoded = self.sc.decode(self.weight, 0, erasure)
             self.weight[:] = self.sc.code(decoded, 0)
+            self.simple_checksum = self.ec.checksum(self.simple_checksum_tensors)
         return super()._conv_forward(input, decoded, bias)
 
 
@@ -366,13 +367,14 @@ class StructuralCodedLinear(torch.nn.Linear):
         return instance
 
     def forward(self, input: Tensor) -> Tensor:
-        redundant_feature_maps = super().forward(input)
-        decoded = self.sc.decode(redundant_feature_maps, dim=1)
-        if decoded is not None:
-            return decoded
-        self.detected = True
-        erasure = self.ec.erasure(self.simple_checksum_tensors, self.simple_checksum)
-        return self.sc.decode(redundant_feature_maps, 1, erasure)
+        decoded = self.sc.decode(self.weight, dim=0)
+        if decoded is None:
+            self.detected = True
+            erasure = self.ec.erasure(self.simple_checksum_tensors, self.simple_checksum)
+            decoded = self.sc.decode(self.weight, 0, erasure)
+            self.weight[:] = self.sc.code(decoded, 0)
+            self.simple_checksum = self.ec.checksum(self.simple_checksum_tensors)
+        return F.linear(input, self.weight, self.bias)
 
 
 class QStructuralCodedLinear(torch.nn.qat.Linear):
