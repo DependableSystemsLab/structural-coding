@@ -1,22 +1,25 @@
+import pickle
 from collections import defaultdict
 
 import numpy
 
 from common.models import MODEL_CLASSES
 from linearcode.fault import get_flattened_weights
-from storage import load
+from storage import load, get_storage_filename
 
 for model_name, model_class in MODEL_CLASSES:
+    if model_name != 'squeezenet':
+        continue
 
-    baseline = load({'dataset': 'imagenet_as_i',
-                     'flips': 0,
-                     'model': model_name,
-                     'protection': 'none'})
+    baseline = get_storage_filename({'dataset': 'imagenet_as_i',
+                                     'flips': 0,
+                                     'model': model_name,
+                                     'protection': 'none'})
 
-    injection = load({'dataset': 'imagenet_as_i',
-                      'flips': 'flr',
-                      'model': model_name,
-                      'protection': 'none'})
+    injection = get_storage_filename({'dataset': 'imagenet_as_i',
+                                      'flips': 'flr',
+                                      'model': model_name,
+                                      'protection': 'none'})
 
     if model_name in ('e2e', 'vgg19'):
         continue
@@ -29,15 +32,25 @@ for model_name, model_class in MODEL_CLASSES:
     baseline_losses = {}
     injection_losses = {}
     counter = 0
-    for b in baseline:
-        injection_ = b[0]['config']['injection']
-        if injection_ in baseline_losses:
-            counter += 1
-        baseline_losses[injection_] = b[0]['loss']
+    with open(baseline, mode='rb') as f:
+        while True:
+            try:
+                b = pickle.load(f)
+                injection_ = b[0]['config']['injection']
+                if injection_ in baseline_losses:
+                    counter += 1
+                baseline_losses[injection_] = float(b[0]['loss'])
+            except EOFError:
+                break
     print(counter, len(baseline_losses))
     # exit()
-    for i in injection:
-        injection_losses[i[0]['config']['injection']] = i[0]['loss']
+    with open(injection, mode='rb') as f:
+        while True:
+            try:
+                i = pickle.load(f)
+                injection_losses[i[0]['config']['injection']] = float(i[0]['loss'])
+            except EOFError:
+                break
 
     common_injections = set(baseline_losses.keys()) & set(injection_losses.keys())
     delta_loss = defaultdict(float)
@@ -56,4 +69,3 @@ for model_name, model_class in MODEL_CLASSES:
     with open('flr/{}.txt'.format(model_name), mode='w') as output_file:
         for i in delta_loss:
             print(i, delta_loss[i] / delta_loss_count[i], delta_loss_count[i], file=output_file)
-
