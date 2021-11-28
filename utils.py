@@ -21,7 +21,7 @@ def lcs(X, Y):
             if i == 0 or j == 0:
                 L[i][j] = []
             elif X[i - 1] == Y[j - 1]:
-                L[i][j] = L[i - 1][j - 1] + [(i - 1, j - 1)]
+                L[i][j] = L[i - 1][j - 1] + [(i -1, j - 1)]
             else:
                 L[i][j] = max(L[i - 1][j], L[i][j - 1], key=lambda l: len(l))
 
@@ -79,13 +79,10 @@ def fradar_checksum(weight: Tensor):
     return allocate_memory
 
 
-def recover_with_fradar(weight: Tensor):
+def recover_with_fradar(weight: Tensor, weight_redundancy: Tensor):
     assert weight.element_size() == 4
-    checksum_channels = weight.shape[0] // 5
-    checksum = weight[checksum_channels * 4:]
-    weight = weight[:checksum_channels * 4].clone()
-    original_shape = weight.shape
-    weight = weight.flatten()
+    checksum = weight_redundancy
+    weight = weight.clone()
     calculated_checksum = fradar_checksum(weight)
     checksum_array = (ctypes.c_ubyte * (checksum.nelement() * checksum.element_size())).from_address(checksum.data_ptr())
     calculated_checksum_array = (ctypes.c_ubyte * (calculated_checksum.nelement() * calculated_checksum.element_size())).from_address(calculated_checksum.data_ptr())
@@ -93,7 +90,7 @@ def recover_with_fradar(weight: Tensor):
     for i in range(0, weight.nelement(), 4):
         if checksum_array[i // 4] != calculated_checksum_array[i // 4]:
             result_array[i] = 0
-    return weight.reshape(original_shape)
+    return weight
 
 
 def bit_tmr(param, param1, param2):
