@@ -360,9 +360,10 @@ class StructuralCodedLinear(torch.nn.Linear):
         instance.weight = torch.nn.Parameter(coded_weights)
         instance.simple_checksum_tensors = (instance.weight,)
         if original.bias is not None:
-            coded_bias = instance.sc.code(original.bias)
-            instance.bias = torch.nn.Parameter(coded_bias)
-            instance.simple_checksum_tensors += (instance.bias,)
+            # coded_bias = instance.sc.code(original.bias)
+            # instance.bias = torch.nn.Parameter(coded_bias)
+            instance.bias = torch.nn.Parameter(original.bias)
+            # instance.simple_checksum_tensors += (instance.bias,)
         instance.simple_checksum = instance.ec.checksum(instance.simple_checksum_tensors)
         return instance
 
@@ -374,7 +375,7 @@ class StructuralCodedLinear(torch.nn.Linear):
             decoded = self.sc.decode(self.weight, 0, erasure)
             self.weight[:] = self.sc.code(decoded, 0)
             self.simple_checksum = self.ec.checksum(self.simple_checksum_tensors)
-        return F.linear(input, self.weight, self.bias)
+        return F.linear(input, decoded, self.bias)
 
 
 class QStructuralCodedLinear(torch.nn.qat.Linear):
@@ -621,6 +622,13 @@ class NormalizedConv2d(torch.nn.Module):
 
     @classmethod
     def from_original(cls, original: torch.nn.Conv2d):
+        if original.groups > 1:
+            result = torch.nn.Conv2d(original.in_channels, original.out_channels, original.kernel_size, original.stride,
+                                     original.padding, original.dilation, original.groups, original.bias is not None,
+                                     original.padding_mode)
+            result.weight = original.weight
+            result.bias = original.bias
+            return result
         return cls(original)
 
 

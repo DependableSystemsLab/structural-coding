@@ -100,6 +100,7 @@ def apply_ranger(model, config):
 
 PROTECTIONS = {
     'before_quantization': {
+        'sc': normalize_model,
         'clipper': apply_clipper,
         'ranger': apply_ranger,
         'tmr': apply_tmr,
