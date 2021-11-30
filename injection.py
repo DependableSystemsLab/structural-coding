@@ -797,7 +797,7 @@ class FRADARConv2d(torch.nn.Conv2d):
         return self._conv_forward(input, recovered, self.bias)
 
 
-MILR_REDUNDANCY = 2
+MILR_BATCH_SIZE = 16
 
 
 class MILRLinear(torch.nn.Linear):
@@ -816,7 +816,7 @@ class MILRLinear(torch.nn.Linear):
 
     def get_random_input(self):
         rnd = numpy.random.RandomState(2021)
-        random_input = rnd.random((MILR_REDUNDANCY ** 2, self.in_features))
+        random_input = rnd.random((MILR_BATCH_SIZE, self.in_features))
         return torch.FloatTensor(random_input) * 1000
 
     def forward(self, input: Tensor) -> Tensor:
@@ -840,8 +840,7 @@ class MILRConv2d(torch.nn.Conv2d):
 
     def get_random_input(self):
         rnd = numpy.random.RandomState(2021)
-        random_input = rnd.random((MILR_REDUNDANCY * self.in_channels * self.kernel_size[0] * self.kernel_size[1],
-                                   self.in_channels, self.kernel_size[0], self.kernel_size[1]))
+        random_input = rnd.random((MILR_BATCH_SIZE, self.in_channels, self.kernel_size[0], self.kernel_size[1]))
         return torch.FloatTensor(random_input)
 
     @classmethod
