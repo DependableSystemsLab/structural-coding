@@ -1,4 +1,5 @@
 import bisect
+import math
 from collections import defaultdict
 from copy import copy
 
@@ -652,7 +653,7 @@ def sdc_protection_scales_with_ber():
                         concat_data = []
                         for e in data:
                             concat_data.extend(e)
-                        print(flips, *sdc(baseline, concat_data), file=data_file)
+                        print('$10^{{{}}}$'.format(int(round(math.log(float(flips), 10)))), *sdc(baseline, concat_data), file=data_file)
 
 
 sdc_protection_scales_with_ber()
