@@ -656,4 +656,13 @@ def sdc_protection_scales_with_ber():
                         print('$10^{{{}}}$'.format(int(round(math.log(float(flips), 10)))), *sdc(baseline, concat_data), file=data_file)
 
 
-sdc_protection_scales_with_ber()
+def parameter_pages():
+
+    for model_name, model_class in MODEL_CLASSES:
+        model = model_class()
+        for module in model.modules():
+            if isinstance(module, torch.nn.Conv2d) or isinstance(module, torch.nn.Linear):
+                print(model_name, math.ceil(1000 / module.weight[0].nelement()))
+
+
+sdc_protection_scales_with_granularity()
