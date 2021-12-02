@@ -52,6 +52,9 @@ CONSTRAINTS = (
     lambda c: c['protection'] in ('sc', 'none', 'clipper', 'tmr', 'radar', 'milr', 'ranger'),
     lambda c: c['model'] not in ('vgg19', ),
     lambda c: not c['quantization'],
+
+    # retry
+    lambda c: c['protection'] in ('sc', 'milr'),
 )
 
 DEFAULTS = {
