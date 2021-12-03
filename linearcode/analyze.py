@@ -495,13 +495,13 @@ def regression_recovery():
         baseline_losses = [float(e['loss']) for e in baseline]
         baseline_loss = sum(baseline_losses) / len(baseline_losses)
         for protection in (
-            # 'sc',
-            # 'clipper',
+            'sc',
+            'clipper',
             'none',
-            # 'tmr',
+            'tmr',
             'radar',
-            # 'milr',
-            # 'ranger',
+            'milr',
+            'ranger',
         ):
             filename = get_storage_filename({'fig': 'regression_recovery',
                                              'model': baseline_config['model'],
@@ -523,7 +523,11 @@ def regression_recovery():
                         losses = [float(e['loss']) for e in concat_data
                                   if not numpy.isnan(e['loss']) and not numpy.isinf(e['loss'])]
                         protection_loss = sum(losses) / len(losses)
-                        print(flips, protection_loss / baseline_loss, file=data_file)
+                        if isinstance(flips, float):
+                            flips_repr = '$10^{{{}}}$'.format(int(round(math.log(float(flips), 10))))
+                        else:
+                            flips_repr = flips
+                        print(flips_repr, protection_loss / baseline_loss, file=data_file)
 
 
 def rewhammer_recovery():
@@ -667,4 +671,4 @@ def parameter_pages():
         print(model_name, sum(numbers) / len(numbers), max(numbers))
 
 
-parameter_pages()
+regression_recovery()
