@@ -629,9 +629,9 @@ def sdc_protection_scales_with_ber():
         lambda c: all((c['flips'] == 0, c['injection'] == 0, c['protection'] == 'none')),
     ))
 
-    for baseline_config in baseline_configs:
-        data = load(baseline_config, {**DEFAULTS, 'injection': baseline_config['injection']})
-        baseline = data[0]
+    for flips in DOMAIN['flips']:
+        if not isinstance(flips, float):
+            continue
         for protection in (
             'sc',
             'clipper',
@@ -642,13 +642,13 @@ def sdc_protection_scales_with_ber():
             'ranger',
         ):
             filename = get_storage_filename({'fig': 'sdc_protection_scales_with_ber',
-                                             'model': baseline_config['model'],
+                                             'flips': '10e{}'.format(int(round(math.log(float(flips), 10)))),
                                              'protection': protection},
                                             extension='.tex', storage='../ubcthesis/data/')
             with open(filename, mode='w') as data_file:
-                for flips in DOMAIN['flips']:
-                    if not isinstance(flips, float):
-                        continue
+                for baseline_config in baseline_configs:
+                    data = load(baseline_config, {**DEFAULTS, 'injection': baseline_config['injection']})
+                    baseline = data[0]
                     config = copy(baseline_config)
                     config['flips'] = flips
                     config['protection'] = protection
@@ -657,7 +657,7 @@ def sdc_protection_scales_with_ber():
                         concat_data = []
                         for e in data:
                             concat_data.extend(e)
-                        print('$10^{{{}}}$'.format(int(round(math.log(float(flips), 10)))), *sdc(baseline, concat_data), file=data_file)
+                        print(baseline_config['model'], *sdc(baseline, concat_data, over_approximate=protection=='sc'), file=data_file)
 
 
 def parameter_pages():
@@ -671,4 +671,4 @@ def parameter_pages():
         print(model_name, sum(numbers) / len(numbers), max(numbers))
 
 
-regression_recovery()
+sdc_protection_scales_with_ber()
