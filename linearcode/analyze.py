@@ -660,9 +660,11 @@ def parameter_pages():
 
     for model_name, model_class in MODEL_CLASSES:
         model = model_class()
+        numbers = []
         for module in model.modules():
             if isinstance(module, torch.nn.Conv2d) or isinstance(module, torch.nn.Linear):
-                print(model_name, math.ceil(1000 / module.weight[0].nelement()))
+                numbers.append(math.ceil(1000 / module.weight[0].nelement()))
+        print(model_name, sum(numbers) / len(numbers), max(numbers))
 
 
-sdc_protection_scales_with_granularity()
+parameter_pages()
