@@ -828,6 +828,7 @@ class MILRLinear(torch.nn.Linear):
                         torch.pinverse(self.get_random_input()),
                         self.checkpoint[:, i],
                     ))
+            self.checkpoint = super().forward(self.get_random_input()) - self.bias
         return super().forward(input)
 
 
@@ -869,6 +870,7 @@ class MILRConv2d(torch.nn.Conv2d):
                     original_weight = torch.matmul(checkpoint_channel, inverse_transformation)
                     self.weight[i] = original_weight.view(*weight.shape[1:])
             weight = self.weight
+            self.checkpoint = super()._conv_forward(self.get_random_input(), weight, None)
         return super()._conv_forward(input, weight, bias)
 
 
