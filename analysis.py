@@ -5,7 +5,7 @@ from functools import reduce
 import torch
 
 
-def sdc(baseline, target):
+def sdc(baseline, target, over_approximate=False):
     baseline_top1, label = merge(baseline)
     # baseline_top1 = baseline_top1[[4, 10, 14, 16, 23, 27, 39, 51, 53, 64, 68, 109, 111, 120, 124, 131, 139,
     #                                          143, 162, 215, 236, 242, 276, 284, 303, 332, 374, 384, 397, 405, 408, 413,
@@ -35,7 +35,7 @@ def sdc(baseline, target):
     correct = label == target_top1
     base_correct = label == baseline_top1
     corrupted = torch.logical_and(torch.logical_not(correct), base_correct)
-    sdc = torch.sum(corrupted) / torch.sum(base_correct)
+    sdc = (torch.sum(corrupted) + (1 if over_approximate else 0)) / torch.sum(base_correct)
     z = 1.96  # 95% confidence interval
     error = z * math.sqrt(sdc * (1 - sdc) / n)
     return float(sdc), error
