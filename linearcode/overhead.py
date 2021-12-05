@@ -34,9 +34,11 @@ def count_flops(input_image, _model):
 
 
 def measure_time(input_image, _model):
+    count = 10
     start = time()
-    _model.forward(input_image)
-    return time() - start
+    for _ in range(count):
+        _model.forward(input_image)
+    return (time() - start) / count
 
 
 measure = measure_time
