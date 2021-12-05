@@ -21,7 +21,7 @@ from linearcode.protection import PROTECTIONS
 from storage import get_storage_filename
 
 torch.random.manual_seed(0)
-imagenet_image = torch.rand((1, 3, 299, 299))
+imagenet_image = torch.rand((16, 3, 299, 299))
 e2e_image = torch.rand((1, 3, 200, 66))
 n = 256
 
