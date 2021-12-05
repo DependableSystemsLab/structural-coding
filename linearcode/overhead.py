@@ -77,8 +77,8 @@ with open(detection_filename, mode='w') as detection_file:
                 image = image
 
                 baseline_flops = measure(image, model)
-                sc_normalized_model = PROTECTIONS['before_quantization']['sc'](model, None)
-                # sc_normalized_model = model
+                # sc_normalized_model = PROTECTIONS['before_quantization']['sc'](model, None)
+                sc_normalized_model = model
                 sc_detection_model = PROTECTIONS['after_quantization']['sc'](sc_normalized_model, {'flips': 1})
                 sc_detection_flops = measure(image, sc_detection_model)
 
