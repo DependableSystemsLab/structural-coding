@@ -64,7 +64,10 @@ def inject_memory_fault(model, config):
         elif config['flips'] == 'row':
             victim_rows = 1
             ber = 0.3
-            affected_rank = rnd.randint(0, RANK_AND_CHANNELS_IN_ROW_MODEL - 1)
+            if RANK_AND_CHANNELS_IN_ROW_MODEL == 1:
+                affected_rank = 0
+            else:
+                affected_rank = rnd.randint(0, RANK_AND_CHANNELS_IN_ROW_MODEL - 1)
             rank_bits = _4KB // RANK_AND_CHANNELS_IN_ROW_MODEL
             rank_words = rank_bits // _2B
             starts = set()

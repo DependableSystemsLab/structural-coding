@@ -8,7 +8,7 @@ from injection import convert, ClipperReLU, ClipperHardswish, StructuralCodedCon
 
 def apply_sc(model, config):
     if not isinstance(config['flips'], str) and config['flips'] // 1 == config['flips']:
-        k = config['flips']
+        k = config['flips'] or 32
     else:
         k = 32
     model, _ = convert(model, mapping={

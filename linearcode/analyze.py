@@ -443,9 +443,11 @@ def sdc_protection_scales_with_granularity():
         lambda c: all((c['flips'] == 0, c['injection'] == 0, c['protection'] == 'none')),
     ))
 
-    for baseline_config in baseline_configs:
-        data = load(baseline_config, {**DEFAULTS, 'injection': baseline_config['injection']})
-        baseline = data[0]
+    for flips in DOMAIN['flips']:
+        if not isinstance(flips, str):
+            continue
+        if flips in ('bank', 'chip', 'rowhammer'):
+            continue
         for protection in (
             'sc',
             'clipper',
@@ -458,15 +460,13 @@ def sdc_protection_scales_with_granularity():
             if not isinstance(protection, str):
                 continue
             filename = get_storage_filename({'fig': 'sdc_protection_scales_with_granularity',
-                                             'model': baseline_config['model'],
+                                             'flips': flips,
                                              'protection': protection},
                                             extension='.tex', storage='../ubcthesis/data/')
             with open(filename, mode='w') as data_file:
-                for flips in DOMAIN['flips']:
-                    if not isinstance(flips, str):
-                        continue
-                    if flips in ('bank', 'chip', 'rowhammer'):
-                        continue
+                for baseline_config in baseline_configs:
+                    data = load(baseline_config, {**DEFAULTS, 'injection': baseline_config['injection']})
+                    baseline = data[0]
                     config = copy(baseline_config)
                     config['flips'] = flips
                     config['protection'] = protection
@@ -475,7 +475,7 @@ def sdc_protection_scales_with_granularity():
                         concat_data = []
                         for e in data:
                             concat_data.extend(e)
-                        print(flips, *sdc(baseline, concat_data), file=data_file)
+                        print(baseline_config['model'], *sdc(baseline, concat_data, over_approximate=protection=='sc'), file=data_file)
 
 
 def regression_recovery():
@@ -495,13 +495,13 @@ def regression_recovery():
         baseline_losses = [float(e['loss']) for e in baseline]
         baseline_loss = sum(baseline_losses) / len(baseline_losses)
         for protection in (
-            # 'sc',
-            # 'clipper',
+            'sc',
+            'clipper',
             'none',
-            # 'tmr',
+            'tmr',
             'radar',
-            # 'milr',
-            # 'ranger',
+            'milr',
+            'ranger',
         ):
             filename = get_storage_filename({'fig': 'regression_recovery',
                                              'model': baseline_config['model'],
@@ -523,7 +523,11 @@ def regression_recovery():
                         losses = [float(e['loss']) for e in concat_data
                                   if not numpy.isnan(e['loss']) and not numpy.isinf(e['loss'])]
                         protection_loss = sum(losses) / len(losses)
-                        print(flips, protection_loss / baseline_loss, file=data_file)
+                        if isinstance(flips, float):
+                            flips_repr = '$10^{{{}}}$'.format(int(round(math.log(float(flips), 10))))
+                        else:
+                            flips_repr = flips
+                        print(flips_repr, protection_loss / baseline_loss, file=data_file)
 
 
 def rewhammer_recovery():
@@ -610,7 +614,7 @@ def sdc_protection_scales_with_faults():
                         concat_data = []
                         for e in data:
                             concat_data.extend(e)
-                        print(flips, *sdc(baseline, concat_data), file=data_file)
+                        print(flips, *sdc(baseline, concat_data, over_approximate=protection=='sc'), file=data_file)
 
 
 def sdc_protection_scales_with_ber():
@@ -625,9 +629,9 @@ def sdc_protection_scales_with_ber():
         lambda c: all((c['flips'] == 0, c['injection'] == 0, c['protection'] == 'none')),
     ))
 
-    for baseline_config in baseline_configs:
-        data = load(baseline_config, {**DEFAULTS, 'injection': baseline_config['injection']})
-        baseline = data[0]
+    for flips in DOMAIN['flips']:
+        if not isinstance(flips, float):
+            continue
         for protection in (
             'sc',
             'clipper',
@@ -638,13 +642,13 @@ def sdc_protection_scales_with_ber():
             'ranger',
         ):
             filename = get_storage_filename({'fig': 'sdc_protection_scales_with_ber',
-                                             'model': baseline_config['model'],
+                                             'flips': '10e{}'.format(int(round(math.log(float(flips), 10)))),
                                              'protection': protection},
                                             extension='.tex', storage='../ubcthesis/data/')
             with open(filename, mode='w') as data_file:
-                for flips in DOMAIN['flips']:
-                    if not isinstance(flips, float):
-                        continue
+                for baseline_config in baseline_configs:
+                    data = load(baseline_config, {**DEFAULTS, 'injection': baseline_config['injection']})
+                    baseline = data[0]
                     config = copy(baseline_config)
                     config['flips'] = flips
                     config['protection'] = protection
@@ -653,7 +657,7 @@ def sdc_protection_scales_with_ber():
                         concat_data = []
                         for e in data:
                             concat_data.extend(e)
-                        print('$10^{{{}}}$'.format(int(round(math.log(float(flips), 10)))), *sdc(baseline, concat_data), file=data_file)
+                        print(baseline_config['model'], *sdc(baseline, concat_data, over_approximate=protection=='sc'), file=data_file)
 
 
 def parameter_pages():
@@ -667,4 +671,4 @@ def parameter_pages():
         print(model_name, sum(numbers) / len(numbers), max(numbers))
 
 
-parameter_pages()
+sdc_protection_scales_with_granularity()

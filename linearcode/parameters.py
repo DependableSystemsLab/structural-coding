@@ -54,7 +54,9 @@ CONSTRAINTS = (
     lambda c: not c['quantization'],
 
     # retry
-    lambda c: c['protection'] in ('sc', 'milr'),
+    lambda c: c['protection'] in ('milr', ),
+    lambda c: c['model'] in ('mobilenet', ),
+    lambda c: c['flips'] in ('rowhammer', ),
 )
 
 DEFAULTS = {
