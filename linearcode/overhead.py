@@ -43,9 +43,6 @@ def measure_time(input_image, _model):
 
 measure = measure_time
 
-detection_filename = get_storage_filename({'fig': 'detection_flops_overhead'},
-                                          extension='.tex', storage='../ubcthesis/data/')
-
 memory_filename = get_storage_filename({'fig': 'memory_overhead'},
                                           extension='.tex', storage='../ubcthesis/data/')
 
@@ -58,14 +55,16 @@ with open(memory_filename, mode='w') as memory_file:
         model_size = sum(p.nelement() for p in model.parameters())
         print(model_name, 100 * (correction_size / model_size - 1), file=memory_file)
 
-with open(detection_filename, mode='w') as detection_file:
-    for model_name, model_class in MODEL_CLASSES:
-        # if model_name != 'shufflenet':
-        #     continue
-        correction_filename = get_storage_filename({'fig': 'correction_flops_overhead',
-                                                    'model': model_name},
-                                                   extension='.tex', storage='../ubcthesis/data/')
-        with open(correction_filename, mode='w') as correction_file:
+for protection in (
+        'sc',
+        'milr',
+        'tmr'
+):
+    detection_filename = get_storage_filename({'fig': 'detection_time_overhead', 'protection': protection},
+                                              extension='.tex', storage='../ubcthesis/data/')
+
+    with open(detection_filename, mode='w') as detection_file:
+        for model_name, model_class in MODEL_CLASSES:
             with torch.no_grad():
 
                 if model_name == 'e2e':
@@ -79,39 +78,11 @@ with open(detection_filename, mode='w') as detection_file:
                 image = image
 
                 baseline_flops = measure(image, model)
-                # sc_normalized_model = PROTECTIONS['before_quantization']['sc'](model, None)
-                sc_normalized_model = model
-                sc_detection_model = PROTECTIONS['after_quantization']['sc'](sc_normalized_model, {'flips': 1})
+                sc_normalized_model = PROTECTIONS['before_quantization'][protection](model, None)
+                sc_detection_model = PROTECTIONS['after_quantization'][protection](sc_normalized_model, {'flips': 1, 'n': 2048})
                 sc_detection_flops = measure(image, sc_detection_model)
 
                 print(model_name,
                       100 * (sc_detection_flops / baseline_flops - 1), file=detection_file)
                 detection_file.flush()
-
-                for k in (1, 2, 4, 8):
-
-                    sc_correction_model = PROTECTIONS['after_quantization']['sc'](sc_normalized_model, {'flips': 32})
-
-                    # sc_normalization_flops = flops(image, sc_normalized_model)
-
-                    params = sorted(list(p for p in sc_correction_model.parameters() if len(p.shape) > 1),
-                                    key=lambda p: p.flatten().shape[0] / p.shape[0], reverse=True)
-
-                    p_iterator = iter(params)
-                    parameter = next(p_iterator)
-                    offset = 0
-                    for i in range(k):
-                        while (i - offset) * (n + k) > parameter.shape[0]:
-                            parameter = next(p_iterator)
-                            offset = i
-                        parameter[(i - offset) * (n + k) % parameter.shape[0]] = 1e16
-
-                    now = time()
-                    sc_correction_flops = measure(image, sc_correction_model)
-                    print(time() - now)
-
-                    print(k,
-                          100 * (sc_correction_flops / baseline_flops - 1), file=correction_file)
-                    correction_file.flush()
-
-            print()
+                print()

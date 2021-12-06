@@ -18,8 +18,8 @@ def apply_sc(model, config):
         torch.nn.qat.Linear: QStructuralCodedLinear,
     }, extra_kwargs={
         'k': k,
-        'threshold': 0.01,
-        'n': 256
+        'threshold': config.get('threshold', 0.01),
+        'n': config.get('n', 256),
     })
     return model
 
@@ -100,7 +100,9 @@ def apply_ranger(model, config):
 
 PROTECTIONS = {
     'before_quantization': {
-        'sc': normalize_model,
+        'radar': lambda model, config: model,
+        # 'sc': normalize_model,
+        'sc': lambda model, config: model,
         'clipper': apply_clipper,
         'ranger': apply_ranger,
         'tmr': apply_tmr,
@@ -109,5 +111,9 @@ PROTECTIONS = {
     'after_quantization': {
         'radar': apply_radar,
         'sc': apply_sc,
+        'clipper': lambda model, config: model,
+        'ranger': lambda model, config: model,
+        'tmr': lambda model, config: model,
+        'milr': lambda model, config: model,
     }
 }
