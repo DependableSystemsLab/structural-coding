@@ -797,7 +797,7 @@ class FRADARConv2d(torch.nn.Conv2d):
         return self._conv_forward(input, recovered, self.bias)
 
 
-MILR_BATCH_SIZE = 16
+MILR_BATCH_SIZE = 16 * 9
 
 
 class MILRLinear(torch.nn.Linear):
