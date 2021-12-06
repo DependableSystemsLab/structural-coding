@@ -43,7 +43,7 @@ def measure_time(input_image, _model):
 
 measure = measure_time
 
-memory_filename = get_storage_filename({'fig': 'memory_overhead'},
+memory_filename = get_storage_filename({'fig': 'memory_overhead', 'protection': 'sc'},
                                           extension='.tex', storage='../ubcthesis/data/')
 
 with open(memory_filename, mode='w') as memory_file:
@@ -53,8 +53,22 @@ with open(memory_filename, mode='w') as memory_file:
         sc_correction_model = PROTECTIONS['after_quantization']['sc'](sc_normalized_model, {'flips': 32})
         correction_size = sum(p.nelement() for p in sc_correction_model.parameters())
         model_size = sum(p.nelement() for p in model.parameters())
-        print(model_name, 100 * (correction_size / model_size - 1), file=memory_file)
+        print(model_name, round(100 * (correction_size / model_size - 1), 2), file=memory_file)
 
+
+memory_filename = get_storage_filename({'fig': 'memory_overhead', 'protection': 'milr'},
+                                          extension='.tex', storage='../ubcthesis/data/')
+
+with open(memory_filename, mode='w') as memory_file:
+    for model_name, model_class in MODEL_CLASSES:
+        model = model_class()
+        sc_normalized_model = PROTECTIONS['before_quantization']['milr'](model, None)
+        sc_correction_model = PROTECTIONS['after_quantization']['milr'](sc_normalized_model, {'flips': 32})
+        model_size = sum(p.nelement() for p in model.parameters())
+        correction_size = sum(m.checkpoint.nelement() for m in sc_correction_model.modules() if hasattr(m, 'checkpoint')) + model_size
+        print(model_name, round(100 * (correction_size / model_size - 1), 2), file=memory_file)
+
+exit()
 for protection in (
         'sc',
         'milr',
