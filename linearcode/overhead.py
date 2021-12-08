@@ -68,11 +68,12 @@ with open(memory_filename, mode='w') as memory_file:
         correction_size = sum(m.checkpoint.nelement() for m in sc_correction_model.modules() if hasattr(m, 'checkpoint')) + model_size
         print(model_name, round(100 * (correction_size / model_size - 1), 2), file=memory_file)
 
-exit()
+# exit()
 for protection in (
         'sc',
         'milr',
-        'tmr'
+        'tmr',
+        'radar',
 ):
     detection_filename = get_storage_filename({'fig': 'detection_time_overhead', 'protection': protection},
                                               extension='.tex', storage='../ubcthesis/data/')
