@@ -56,6 +56,7 @@ CONSTRAINTS = (
 
     # retry
     lambda c: c['protection'] in ('milr', 'sc', 'none'),
+    lambda c: c['model'] != 'e2e',
 )
 
 DEFAULTS = {
