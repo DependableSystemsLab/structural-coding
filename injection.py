@@ -632,6 +632,65 @@ class NormalizedConv2d(torch.nn.Module):
         return cls(original)
 
 
+class NormalizedConv2dGroups(torch.nn.Module):
+
+    def __init__(self, original):
+        super().__init__()
+        self.groups = original.groups
+        group_in_channels = original.in_channels // original.groups
+        self.group_in_channels = group_in_channels
+        divisions = 1
+        self.divisions = divisions
+        division_in_channels = group_in_channels // divisions
+        self.division_in_channels = division_in_channels
+        for i in range(self.groups):
+            for j in range(self.divisions):
+                group_out_channels = original.out_channels // self.groups
+                convolution = torch.nn.Conv2d(original.in_channels // divisions // self.groups,
+                                              group_out_channels,
+                                              original.kernel_size,
+                                              original.stride,
+                                              original.padding, original.dilation, 1, original.bias is not None,
+                                              original.padding_mode)
+                group_base_index = i * group_in_channels
+                division_base_index = j * division_in_channels
+                start = division_base_index
+                end = start + division_in_channels
+                weights = original.weight[group_base_index: group_base_index + group_out_channels, start: end]
+                if original.bias is not None:
+                    convolution.bias = torch.nn.Parameter(original.bias[group_base_index: group_base_index + group_out_channels] / divisions)
+                convolution.weight = torch.nn.Parameter(weights)
+                self.__setattr__('conv_{}_{}'.format(i, j), convolution)
+
+    def forward(self, input: Tensor) -> Tensor:
+        result = []
+        for i in range(self.groups):
+            division_result = None
+            for j in range(self.divisions):
+                group_base_index = i * self.group_in_channels
+                division_base_index = j * self.division_in_channels
+                start = group_base_index + division_base_index
+                end = start + self.division_in_channels
+                forward = getattr(self, 'conv_{}_{}'.format(i, j)).forward(input[:, start: end])
+                if division_result is None:
+                    division_result = forward
+                else:
+                    division_result += forward
+            result.append(division_result)
+        return torch.cat(result, dim=1)
+
+    @classmethod
+    def from_original(cls, original: torch.nn.Conv2d):
+        if original.groups > 1:
+            result = torch.nn.Conv2d(original.in_channels, original.out_channels, original.kernel_size, original.stride,
+                                     original.padding, original.dilation, original.groups, original.bias is not None,
+                                     original.padding_mode)
+            result.weight = original.weight
+            result.bias = original.bias
+            return result
+        return cls(original)
+
+
 class NormalizedLinear(torch.nn.Module):
 
     def __init__(self, original: torch.nn.Linear):

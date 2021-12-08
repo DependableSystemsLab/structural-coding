@@ -7,8 +7,8 @@ from settings import PROBABILITIES
 from storage import get_storage_filename
 
 DOMAIN = {
-    'injection': range(400),
-    # 'injection': range(1),
+    # 'injection': range(400),
+    'injection': range(1),
     'model': ('e2e', 'resnet50', 'alexnet', 'squeezenet', 'vgg19', 'mobilenet', 'googlenet', 'shufflenet'),
     'quantization': (True, False),
     'sampler': ('none', 'critical', 'tiny'),
@@ -30,6 +30,7 @@ DOMAIN = {
               'word',
               'column',
               'row',
+              'row-4',
               # 'bank',
               # 'chip',
               # 'flr',
@@ -48,15 +49,13 @@ CONSTRAINTS = (
     # ensure baseline execution
     lambda c: any((c['flips'] != 0, all((c['injection'] == 0, c['protection'] == 'none')))),
     # only baseline
-    lambda c: isinstance(c['flips'], str),
+    lambda c: isinstance(c['flips'], str) or isinstance(c['flips'], float) or c['flips'] == 0,
     lambda c: c['protection'] in ('sc', 'none', 'clipper', 'tmr', 'radar', 'milr', 'ranger'),
     lambda c: c['model'] not in ('vgg19', ),
     lambda c: not c['quantization'],
 
     # retry
-    lambda c: c['protection'] in ('milr', ),
-    lambda c: c['model'] in ('mobilenet', ),
-    lambda c: c['flips'] in ('rowhammer', ),
+    lambda c: c['protection'] in ('milr', 'sc', 'none'),
 )
 
 DEFAULTS = {
@@ -109,7 +108,7 @@ CONFIG = SLURM_ARRAY[int(os.environ.get('INTERNAL_SLURM_ARRAY_TASK_ID'))]
 if __name__ == '__main__':
     file_names = set(get_storage_filename(i, {**DEFAULTS, 'injection': i['injection']}) for i in SLURM_ARRAY)
     for file_name in file_names:
-        if os.path.exists(file_name):
+        # if os.path.exists(file_name):
             print(file_name)
 
     print('configs:', len(SLURM_ARRAY), 'jobs:', len(SLURM_ARRAY) / 40, 'files:', len(file_names))

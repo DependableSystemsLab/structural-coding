@@ -10,7 +10,6 @@ from settings import PROBABILITIES
 
 _4KB = 4 * 2 ** 10 * 8
 _2B = 2 * 8
-RANK_AND_CHANNELS_IN_ROW_MODEL = 4
 
 
 def inject_memory_fault(model, config):
@@ -61,7 +60,10 @@ def inject_memory_fault(model, config):
             for i in range(bank_index, size, 8 * _2B):
                 bit_indices_to_flip.add(i)
             granularity = _2B
-        elif config['flips'] == 'row':
+        elif config['flips'].startswith('row'):
+            RANK_AND_CHANNELS_IN_ROW_MODEL = 1
+            if config['flips'] != 'row':
+                RANK_AND_CHANNELS_IN_ROW_MODEL = int(config['flips'].split('-')[1])
             victim_rows = 1
             ber = 0.3
             if RANK_AND_CHANNELS_IN_ROW_MODEL == 1:
@@ -265,9 +267,9 @@ if __name__ == '__main__':
     # visualize_conv2d_corruption(module, indices)
     assert max(indices) - min(indices) < _2B
     for injection in range(5):
-        indices, _ = inject_memory_fault(module, {'quantization': False, 'injection': injection, 'flips': 'row'})
+        indices, _ = inject_memory_fault(module, {'quantization': False, 'injection': injection, 'flips': 'row-4'})
         visualize_conv2d_corruption(module, indices)
-        assert len(set(i // _4KB for i in indices)) == 2 * RANK_AND_CHANNELS_IN_ROW_MODEL
+        assert len(set(i // _4KB for i in indices)) == 2 * 4
     for injection in range(5):
         indices, _ = inject_memory_fault(module, {'quantization': False, 'injection': injection, 'flips': 'column'})
         # visualize_conv2d_corruption(module, indices)

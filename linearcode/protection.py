@@ -3,7 +3,7 @@ import torch
 from injection import convert, ClipperReLU, ClipperHardswish, StructuralCodedConv2d, StructuralCodedLinear, \
     NormalizedConv2d, NormalizedLinear, TMRLinear, TMRConv2d, RADARConv2d, RADARLinear, QStructuralCodedConv2d, \
     QStructuralCodedLinear, FRADARConv2d, FRADARLinear, MILRLinear, MILRConv2d, ClipperELU, RangerReLU, RangerHardswish, \
-    RangerELU
+    RangerELU, NormalizedConv2dGroups
 
 
 def apply_sc(model, config):
@@ -28,6 +28,13 @@ def normalize_model(model, _):
     model, _ = convert(model, mapping={
         torch.nn.Conv2d: NormalizedConv2d,
         torch.nn.Linear: NormalizedLinear,
+    })
+    return model
+
+
+def normalize_groups(model, _):
+    model, _ = convert(model, mapping={
+        torch.nn.Conv2d: NormalizedConv2dGroups,
     })
     return model
 
@@ -106,7 +113,7 @@ PROTECTIONS = {
         'clipper': apply_clipper,
         'ranger': apply_ranger,
         'tmr': apply_tmr,
-        'milr': apply_milr,
+        'milr': normalize_groups,
     },
     'after_quantization': {
         'radar': apply_radar,
@@ -114,6 +121,6 @@ PROTECTIONS = {
         'clipper': lambda model, config: model,
         'ranger': lambda model, config: model,
         'tmr': lambda model, config: model,
-        'milr': lambda model, config: model,
+        'milr': apply_milr,
     }
 }
