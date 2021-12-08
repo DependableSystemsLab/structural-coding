@@ -18,7 +18,7 @@ def apply_sc(model, config):
         torch.nn.qat.Linear: QStructuralCodedLinear,
     }, extra_kwargs={
         'k': k,
-        'threshold': config.get('threshold', 0.01),
+        'threshold': config.get('threshold', 0.00),
         'n': config.get('n', 256),
     })
     return model
