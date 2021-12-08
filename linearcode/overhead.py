@@ -43,6 +43,11 @@ def measure_time(input_image, _model):
 
 measure = measure_time
 
+
+for model_name, model_class in MODEL_CLASSES:
+    model = model_class()
+    print(sum(m.weight.nelement() for m in model.modules() if hasattr(m, 'weight')) / sum(p.nelement() for p in model.parameters()))
+
 memory_filename = get_storage_filename({'fig': 'memory_overhead', 'protection': 'sc'},
                                           extension='.tex', storage='../ubcthesis/data/')
 
