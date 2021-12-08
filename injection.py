@@ -681,13 +681,6 @@ class NormalizedConv2dGroups(torch.nn.Module):
 
     @classmethod
     def from_original(cls, original: torch.nn.Conv2d):
-        if original.groups > 1:
-            result = torch.nn.Conv2d(original.in_channels, original.out_channels, original.kernel_size, original.stride,
-                                     original.padding, original.dilation, original.groups, original.bias is not None,
-                                     original.padding_mode)
-            result.weight = original.weight
-            result.bias = original.bias
-            return result
         return cls(original)
 
 

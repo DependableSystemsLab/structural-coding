@@ -7,8 +7,8 @@ from settings import PROBABILITIES
 from storage import get_storage_filename
 
 DOMAIN = {
-    # 'injection': range(400),
-    'injection': range(1),
+    'injection': range(1000),
+    # 'injection': range(1),
     'model': ('e2e', 'resnet50', 'alexnet', 'squeezenet', 'vgg19', 'mobilenet', 'googlenet', 'shufflenet'),
     'quantization': (True, False),
     'sampler': ('none', 'critical', 'tiny'),
@@ -55,7 +55,7 @@ CONSTRAINTS = (
     lambda c: not c['quantization'],
 
     # retry
-    lambda c: c['protection'] in ('milr', 'sc', 'none'),
+    lambda c: c['protection'] in ('sc', 'none'),
     lambda c: c['model'] != 'e2e',
 )
 
@@ -109,7 +109,7 @@ CONFIG = SLURM_ARRAY[int(os.environ.get('INTERNAL_SLURM_ARRAY_TASK_ID'))]
 if __name__ == '__main__':
     file_names = set(get_storage_filename(i, {**DEFAULTS, 'injection': i['injection']}) for i in SLURM_ARRAY)
     for file_name in file_names:
-        # if os.path.exists(file_name):
+        if os.path.exists(file_name):
             print(file_name)
 
     print('configs:', len(SLURM_ARRAY), 'jobs:', len(SLURM_ARRAY) / 40, 'files:', len(file_names))
