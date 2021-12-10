@@ -56,7 +56,7 @@ CONSTRAINTS = (
 
     # retry
     lambda c: c['protection'] in ('sc', 'none'),
-    lambda c: c['flips'] in ('row', 'row-4'),
+    lambda c: c['flips'] in ('row', 'row-4', 'rowhammer'),
     lambda c: c['model'] in ('mobilenet', 'squeezenet', 'shufflenet'),
 )
 

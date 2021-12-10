@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --time=18:00:00
 #SBATCH --mem=16G
-#SBATCH --array 0-299
+#SBATCH --array 0-449
 
 export IMAGENET_ROOT=/home/aasgarik/scratch/data/imagenet
 export PYTHONPATH=$PYTHONPATH:/home/aasgarik/projects/def-karthikp/aasgarik/reasilience
