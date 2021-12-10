@@ -56,7 +56,8 @@ CONSTRAINTS = (
 
     # retry
     lambda c: c['protection'] in ('sc', 'none'),
-    lambda c: c['model'] != 'e2e',
+    lambda c: c['flips'] in ('row', 'row-4'),
+    lambda c: c['model'] in ('mobilenet', 'squeezenet', 'shufflenet'),
 )
 
 DEFAULTS = {
