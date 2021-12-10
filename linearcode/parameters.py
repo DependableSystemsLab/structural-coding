@@ -7,7 +7,7 @@ from settings import PROBABILITIES
 from storage import get_storage_filename
 
 DOMAIN = {
-    'injection': range(1000),
+    'injection': range(400),
     # 'injection': range(1),
     'model': ('e2e', 'resnet50', 'alexnet', 'squeezenet', 'vgg19', 'mobilenet', 'googlenet', 'shufflenet'),
     'quantization': (True, False),
@@ -55,8 +55,7 @@ CONSTRAINTS = (
     lambda c: not c['quantization'],
 
     # retry
-    lambda c: c['protection'] in ('sc', 'none'),
-    lambda c: c['flips'] in ('row', 'row-4', 'rowhammer'),
+    lambda c: c['protection'] in ('sc', 'none', 'milr'),
     lambda c: c['model'] in ('mobilenet', 'squeezenet', 'shufflenet'),
 )
 
