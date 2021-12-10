@@ -79,6 +79,26 @@ CONSTRAINTS = {
         lambda c: c['model'] in ('resnet50', ),
         lambda c: c['flips'] in ('rowhammer', )
     ),
+    'milrmissing': (
+        lambda c: c['dataset'] in ('imagenet_ds_128', 'driving_dataset_test'),
+        lambda c: any((
+            all((c['dataset'] == 'imagenet_ds_128', c['model'] != 'e2e')),
+            all((c['dataset'] == 'driving_dataset_test', c['model'] == 'e2e'))
+        )),
+        lambda c: c['sampler'] == 'none',
+        # ensure baseline execution
+        lambda c: any((c['flips'] != 0, all((c['injection'] == 0, c['protection'] == 'none')))),
+        # only baseline
+        lambda c: isinstance(c['flips'], str) or isinstance(c['flips'], float) or c['flips'] == 0,
+        lambda c: c['protection'] in ('sc', 'none', 'clipper', 'tmr', 'radar', 'milr', 'ranger'),
+        lambda c: c['model'] not in ('vgg19',),
+        lambda c: not c['quantization'],
+
+        # retry
+        lambda c: c['protection'] in ('milr', ),
+        lambda c: c['model'] in ('resnet50', 'alexnet'),
+        lambda c: isinstance(c['flips'], float),
+    ),
 }[SHARD]
 
 DEFAULTS = {
