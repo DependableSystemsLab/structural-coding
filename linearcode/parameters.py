@@ -3,7 +3,7 @@ import pickle
 from copy import deepcopy
 from itertools import product
 
-from settings import PROBABILITIES
+from settings import PROBABILITIES, SHARD
 from storage import get_storage_filename
 
 DOMAIN = {
@@ -39,25 +39,47 @@ DOMAIN = {
 }
 
 # don't use short circuit execution here
-CONSTRAINTS = (
-    lambda c: c['dataset'] in ('imagenet_ds_128', 'driving_dataset_test'),
-    lambda c: any((
-        all((c['dataset'] == 'imagenet_ds_128', c['model'] != 'e2e')),
-        all((c['dataset'] == 'driving_dataset_test', c['model'] == 'e2e'))
-    )),
-    lambda c: c['sampler'] == 'none',
-    # ensure baseline execution
-    lambda c: any((c['flips'] != 0, all((c['injection'] == 0, c['protection'] == 'none')))),
-    # only baseline
-    lambda c: isinstance(c['flips'], str) or isinstance(c['flips'], float) or c['flips'] == 0,
-    lambda c: c['protection'] in ('sc', 'none', 'clipper', 'tmr', 'radar', 'milr', 'ranger'),
-    lambda c: c['model'] not in ('vgg19', ),
-    lambda c: not c['quantization'],
+CONSTRAINTS = {
+    'default': (
+        lambda c: c['dataset'] in ('imagenet_ds_128', 'driving_dataset_test'),
+        lambda c: any((
+            all((c['dataset'] == 'imagenet_ds_128', c['model'] != 'e2e')),
+            all((c['dataset'] == 'driving_dataset_test', c['model'] == 'e2e'))
+        )),
+        lambda c: c['sampler'] == 'none',
+        # ensure baseline execution
+        lambda c: any((c['flips'] != 0, all((c['injection'] == 0, c['protection'] == 'none')))),
+        # only baseline
+        lambda c: isinstance(c['flips'], str) or isinstance(c['flips'], float) or c['flips'] == 0,
+        lambda c: c['protection'] in ('sc', 'none', 'clipper', 'tmr', 'radar', 'milr', 'ranger'),
+        lambda c: c['model'] not in ('vgg19',),
+        lambda c: not c['quantization'],
 
-    # retry
-    lambda c: c['protection'] in ('sc', 'none', 'milr'),
-    lambda c: c['model'] in ('mobilenet', 'squeezenet', 'shufflenet'),
-)
+        # retry
+        lambda c: c['protection'] in ('sc', 'none', 'milr'),
+        lambda c: c['model'] in ('mobilenet', 'squeezenet', 'shufflenet'),
+    ),
+    'missing': (
+        lambda c: c['dataset'] in ('imagenet_ds_128', 'driving_dataset_test'),
+        lambda c: any((
+            all((c['dataset'] == 'imagenet_ds_128', c['model'] != 'e2e')),
+            all((c['dataset'] == 'driving_dataset_test', c['model'] == 'e2e'))
+        )),
+        lambda c: c['sampler'] == 'none',
+        # ensure baseline execution
+        lambda c: any((c['flips'] != 0, all((c['injection'] == 0, c['protection'] == 'none')))),
+        # only baseline
+        lambda c: isinstance(c['flips'], str) or isinstance(c['flips'], float) or c['flips'] == 0,
+        lambda c: c['protection'] in ('sc', 'none', 'clipper', 'tmr', 'radar', 'milr', 'ranger'),
+        lambda c: c['model'] not in ('vgg19',),
+        lambda c: not c['quantization'],
+
+        # retry
+        lambda c: c['protection'] in ('sc', 'none', 'milr'),
+        lambda c: c['model'] in ('resnet50', ),
+        lambda c: c['flips'] in ('rowhammer', )
+    ),
+}[SHARD]
 
 DEFAULTS = {
     'sampler': 'none',

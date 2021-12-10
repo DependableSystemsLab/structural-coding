@@ -7,6 +7,7 @@ IMAGENET_ROOT = os.environ.get('IMAGENET_ROOT', '../data/imagenet/')
 IMAGENET_PATH = os.environ.get('IMAGENET_PATH', os.path.join(IMAGENET_ROOT, 'ILSVRC/Data/CLS-LOC'))
 IMAGENET20P_SAMPLER_PATH = os.environ.get('IMAGENET20P_SAMPLER_PATH', '../imagenet20sampler.pkl')
 COMMA_MODEL_ROOT = os.environ.get('COMMA_MODEL_ROOT', 'comma')
+SHARD = os.environ.get('SHARD', 'default')
 PROBABILITIES = (
     0.00000552972,
     # 0.00000552972 * 0.5 ** 2,

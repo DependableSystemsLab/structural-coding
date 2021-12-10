@@ -444,21 +444,27 @@ def sdc_protection_scales_with_granularity():
     ))
 
     for flips in DOMAIN['flips']:
+        # if flips not in ("row", "row-4", "rowhammer"):
+        #     continue
         if not isinstance(flips, str):
             continue
-        if flips in ('bank', 'chip', 'rowhammer'):
-            continue
+        # if flips in ('bank', 'chip'):
+        #     continue
+        # if not isinstance(flips, float):
+        #     continue
+        print(flips)
         for protection in (
             'sc',
-            'clipper',
+            # 'clipper',
             'none',
-            'tmr',
-            'radar',
-            'milr',
-            'ranger',
+            # 'tmr',
+            # 'radar',
+            # 'milr',
+            # 'ranger',
         ):
             if not isinstance(protection, str):
                 continue
+            print(protection)
             filename = get_storage_filename({'fig': 'sdc_protection_scales_with_granularity',
                                              'flips': flips,
                                              'protection': protection},
@@ -476,6 +482,7 @@ def sdc_protection_scales_with_granularity():
                         for e in data:
                             concat_data.extend(e)
                         print(baseline_config['model'], *sdc(baseline, concat_data, over_approximate=protection=='sc'), file=data_file)
+                        print(baseline_config['model'], *sdc(baseline, concat_data, over_approximate=protection=='sc'))
 
 
 def regression_recovery():
