@@ -1,4 +1,5 @@
 import random
+from abc import abstractmethod
 from itertools import combinations
 from typing import Optional, Tuple
 
@@ -24,21 +25,90 @@ class ErasureCode:
         return torch.sort(torch.topk(torch.abs(self.checksum(tensor, dim) - checksum), self.k).indices).values
 
 
+class Field:
+
+    @abstractmethod
+    def invert(self, matrix: Tensor):
+        pass
+
+    @abstractmethod
+    def random(self, rnd: numpy.random.RandomState, n: int, k: int) -> Tensor:
+        pass
+
+    @abstractmethod
+    def to_torch(self, tensor) -> Tensor:
+        pass
+
+    @abstractmethod
+    def to_field(self, tensor: Tensor):
+        pass
+
+    @abstractmethod
+    def matmul(self, a, b):
+        pass
+
+
+class DoubleField(Field):
+
+    def matmul(self, a, b):
+        return a @ b
+
+    def invert(self, matrix: Tensor):
+        return torch.pinverse(matrix)
+
+    def random(self, rnd, n, k):
+        return torch.DoubleTensor(rnd.rand(n, k))
+
+    def to_torch(self, tensor) -> Tensor:
+        return torch.DoubleTensor(tensor)
+
+    def to_field(self, tensor: Tensor):
+        return tensor
+
+
+class FloatField(Field):
+
+    def matmul(self, a, b):
+        return a @ b
+
+    def invert(self, matrix: Tensor):
+        return torch.pinverse(matrix)
+
+    def random(self, rnd, n, k):
+        return torch.FloatTensor(rnd.rand(n, k))
+
+    def to_torch(self, tensor) -> Tensor:
+        return torch.FloatTensor(tensor)
+
+    def to_field(self, tensor: Tensor):
+        return tensor
+
+
 class StructuralCode:
 
-    def __init__(self, n, k, threshold=0, double=False) -> None:
+    def __init__(self, n, k, threshold=0, double=False, field: Field = None) -> None:
         self.n = n
         self.k = k
         self._weights = None
         self.threshold = threshold
-        self.double = double
+        if field is None:
+            if double:
+                self.field = DoubleField()
+            else:
+                self.field = FloatField()
+        else:
+            self.field = field
 
     def _code(self, tensor: Tensor, dim: int = 0, weight_stop=None, weights=None) -> Tensor:
         if weights is None:
             weights = self._generate_redundant_weights()
         if weight_stop is None:
             weight_stop = self.k
-        return self.out_transform(torch.matmul(self.in_transpose(tensor, dim), weights[:tensor.shape[dim], :weight_stop]), dim)
+        return self.out_transform(self.field.matmul(self.field.to_field(
+            self.in_transpose(tensor, dim)
+        ), self.field.to_field(
+            weights[:tensor.shape[dim], :weight_stop]
+        )), dim)
 
     def code(self, tensor: Tensor, dim: int = 0, weight_stop=None, weights=None) -> Tensor:
         if tensor.shape[dim] > self.n:
@@ -93,9 +163,13 @@ class StructuralCode:
         weights = weights[:, healthy_indices]
         redundant_part = tensor[healthy_indices]
 
-        patch = torch.pinverse(weights)
+        patch = self.field.invert(weights)
 
-        reconstructed_erasure = self.in_transpose(torch.matmul(self.out_transform(redundant_part, 0), patch))
+        reconstructed_erasure = self.in_transpose(
+            self.field.to_torch(
+                self.field.matmul(
+                    self.field.to_field(self.out_transform(redundant_part, 0)),
+                    patch)))
 
         reconstructed_erasure[systematic_healthy_indices] = tensor[systematic_healthy_indices]
 
@@ -104,10 +178,7 @@ class StructuralCode:
     def _generate_redundant_weights(self) -> Tensor:
         if self._weights is None:
             rnd = numpy.random.RandomState(2021)
-            if self.double:
-                self._weights = torch.DoubleTensor(rnd.rand(self.n, self.k))
-            else:
-                self._weights = torch.FloatTensor(rnd.rand(self.n, self.k))
+            self._weights = self.field.random(rnd, self.n, self.k)
             self._weights[:, 0] = 1
         return torch.clone(self._weights)
 
