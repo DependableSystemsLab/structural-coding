@@ -234,7 +234,7 @@ class StructuralCodedConv2d(torch.nn.Conv2d):
         self.n = n
         self.threshold = threshold
         self.sc = StructuralCode(self.n, self.k, self.threshold)
-        self.ec = ErasureCode(self.k)
+        self.ec = ErasureCode(self.n, self.k)
         self.simple_checksum = None
         self.simple_checksum_tensors = None
         self.injected = False
@@ -281,7 +281,7 @@ class QStructuralCodedConv2d(torch.nn.qat.Conv2d):
         self.n = n
         self.threshold = threshold
         self.sc = StructuralCode(self.n, self.k, self.threshold)
-        self.ec = ErasureCode(self.k)
+        self.ec = ErasureCode(self.n, self.k)
         self.simple_checksum = None
         self.simple_checksum_tensors = None
         self.injected = False
@@ -338,7 +338,7 @@ class StructuralCodedLinear(torch.nn.Linear):
         self.n = n
         self.threshold = threshold
         self.sc = StructuralCode(self.n, self.k, self.threshold)
-        self.ec = ErasureCode(self.k)
+        self.ec = ErasureCode(self.n, self.k)
         self.simple_checksum = None
         self.simple_checksum_tensors = None
 
@@ -389,7 +389,7 @@ class QStructuralCodedLinear(torch.nn.qat.Linear):
         self.n = n
         self.threshold = threshold
         self.sc = StructuralCode(self.n, self.k, self.threshold)
-        self.ec = ErasureCode(self.k)
+        self.ec = ErasureCode(self.n, self.k)
         self.simple_checksum = None
         self.simple_checksum_tensors = None
 

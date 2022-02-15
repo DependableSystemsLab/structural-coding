@@ -18,7 +18,6 @@ class TensorIndex:
         self.index[-1] = -1
 
     def __next__(self):
-        clone = tuple(self.index)
         for i in range(len(self.shape) - 1, -1, -1):
             self.index[i] += 1
             if self.index[i] < self.shape[i]:
@@ -26,7 +25,7 @@ class TensorIndex:
             self.index[i] = 0
             if i == 0:
                 raise StopIteration
-        return clone
+        return tuple(self.index)
 
     def __iter__(self):
         return self
@@ -61,25 +60,28 @@ class Int8Field(Field):
 
 if __name__ == '__main__':
     k = 8
-    coding_dim = 1
+    coding_dim = 3
     block_size = 64
     gf = GF(2 ** 8)
-    plain = torch.randint(0, gf.order, (2, block_size + 63, 2))
+    plain = torch.randint(0, gf.order, (5, 3, 2, block_size + 63, 3))
+    # plain = torch.rand((3, 2, block_size + 63, 2))
     coding = StructuralCode(block_size, k, field=Int8Field(gf))
-    erasure_coding = ErasureCode(k)
+    # coding = StructuralCode(block_size, k)
+    erasure_coding = ErasureCode(block_size, k)
     codeword = coding.code(plain, coding_dim)
-    erasure_checksum = erasure_coding.checksum(plain, coding_dim)
+    erasure_checksum = erasure_coding.checksum(codeword, coding_dim)
     corrupted_index = []
     for _ in range(k):
         corruption_index = random.randrange(0, block_size + k)
-        codeword[:, corruption_index, :] = random.randrange(0, gf.order)
+        codeword[tuple(slice(None) if d != coding_dim else corruption_index for d, _ in enumerate(codeword.shape))] = random.randrange(0, gf.order)
         corrupted_index.append(corruption_index)
     # assert coding.decode(codeword, 1) is None
     # erasure = erasure_coding.erasure(coding.extract_systematic(codeword, coding_dim), erasure_checksum, coding_dim)
     corrupted_index = sorted(corrupted_index)
-    erasure = LongTensor(corrupted_index)
-    decoded_plain = coding.decode(codeword, 1, erasure)
+    erasure = erasure_coding.erasure(codeword, erasure_checksum, coding_dim)
+    decoded_plain = coding.decode(codeword, coding_dim, erasure)
     print(corrupted_index)
     print(erasure)
     corrupted_index = [c for c in corrupted_index if c < block_size]
     print(plain - decoded_plain)
+    print(torch.sum(plain - decoded_plain))

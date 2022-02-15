@@ -9,8 +9,9 @@ from torch import Tensor, LongTensor
 
 
 class ErasureCode:
-    def __init__(self, k) -> None:
+    def __init__(self, n, k) -> None:
         self.k = k
+        self.n = n
 
     @staticmethod
     def checksum(tensor: [Tensor, Tuple[Tensor]], dim: int = 0) -> Tensor:
@@ -22,7 +23,12 @@ class ErasureCode:
             return torch.sum(tensor, dim=tuple(d for d in range(len(tensor.shape)) if d != dim))
 
     def erasure(self, tensor: [Tensor, Tuple[Tensor]], checksum: Tensor, dim: int = 0) -> Tensor:
-        return torch.sort(torch.topk(torch.abs(self.checksum(tensor, dim) - checksum), self.k).indices).values
+        result = LongTensor(())
+        for start_index in range(0, tensor.shape[dim], self.n + self.k):
+            sub_tensor = tensor[tuple(slice(None) if d != dim else slice(start_index, start_index + self.n + self.k) for d, _ in enumerate(tensor.shape))]
+            sub_checksum = checksum[start_index: start_index + self.k + self.n]
+            result = torch.cat((result, torch.topk(torch.abs(self.checksum(sub_tensor, dim) - sub_checksum), self.k).indices + start_index), 0)
+        return torch.sort(result).values
 
 
 class Field:
@@ -212,7 +218,7 @@ if __name__ == '__main__':
     block_size = 64
     plain = torch.rand((2, block_size + 63, 2))
     coding = StructuralCode(block_size, k)
-    erasure_coding = ErasureCode(k)
+    erasure_coding = ErasureCode(block_size, k)
     codeword = coding.code(plain, coding_dim)
     erasure_checksum = erasure_coding.checksum(plain, coding_dim)
     corrupted_index = []
