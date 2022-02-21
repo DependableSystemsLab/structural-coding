@@ -127,7 +127,7 @@ def inject_memory_fault(model, config):
 def flip_bits(bit_indices_to_flip, bit_width, config, modules, parameters, granularity, rnd):
     print('Injecting', len(bit_indices_to_flip), 'faults at granularity {}'.format(granularity))
     print(config)
-    if granularity == 1:
+    if granularity == 1 or config['quantization']:
         pointer = iter(parameters)
         module_pointer = iter(modules)
         parameter = next(pointer)
@@ -141,20 +141,28 @@ def flip_bits(bit_indices_to_flip, bit_width, config, modules, parameters, granu
                 parameter = next(pointer, None)
                 module = next(module_pointer, None)
             if config['quantization']:
-                repeat = parameter.shape[0] // module.weight_fake_quant.scale.flatten().shape[0]
-                scale = torch.repeat_interleave(module.weight_fake_quant.scale, repeat)[parameter_index]
-                zero_point = torch.repeat_interleave(module.weight_fake_quant.zero_point, repeat)[parameter_index]
-                quantized = torch.clamp(
-                    torch.round(parameter[parameter_index] / scale + zero_point),
-                    module.weight_fake_quant.quant_min,
-                    module.weight_fake_quant.quant_max)
-                parameter[parameter_index] = (bitflip(int(quantized), bit_index % bit_width) - zero_point) * scale
+                for _ in range(2):
+                    repeat = parameter.shape[0] // module.weight_fake_quant.scale.flatten().shape[0]
+                    scale = torch.repeat_interleave(module.weight_fake_quant.scale, repeat)[parameter_index]
+                    zero_point = torch.repeat_interleave(module.weight_fake_quant.zero_point, repeat)[parameter_index]
+                    quantized = torch.clamp(
+                        torch.round(parameter[parameter_index] / scale + zero_point),
+                        module.weight_fake_quant.quant_min,
+                        module.weight_fake_quant.quant_max)
+                    if granularity == _2B:
+                        flipped_quantized = module.weight_fake_quant.quant_max
+                        parameter[parameter_index] = (flipped_quantized - zero_point) * scale
+                    else:
+                        parameter[parameter_index] = (bitflip(int(quantized), bit_index % bit_width) - zero_point) * scale
+                    parameter_index += 1
+                    if granularity == 1:
+                        break
             else:
                 parameter[parameter_index] = bitflip(float(parameter[parameter_index]), bit_index % bit_width)
     else:
         all_params = torch.cat(parameters)
-        assert not config['quantization'], "not yet implemented"
         if granularity == _4KB:
+            assert not config['quantization'], "not yet implemented"
             sorted_bit_indices_to_flip = sorted(bit_indices_to_flip)
             bit_indices_to_flip = numpy.array(sorted_bit_indices_to_flip)
             rnd.shuffle(sorted_bit_indices_to_flip)

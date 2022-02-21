@@ -13,7 +13,7 @@ class TensorIndex:
 
     def __init__(self, shape) -> None:
         super().__init__()
-        self.shape = shape
+        self.shape = (1, ) + shape
         self.index = [0 for _ in self.shape]
         self.index[-1] = -1
 
@@ -25,13 +25,13 @@ class TensorIndex:
             self.index[i] = 0
             if i == 0:
                 raise StopIteration
-        return tuple(self.index)
+        return tuple(self.index)[1:]
 
     def __iter__(self):
         return self
 
 
-class Int8Field(Field):
+class IntField(Field):
 
     def matmul(self, a, b):
         a_shape = a.shape[:-2]
@@ -41,8 +41,10 @@ class Int8Field(Field):
             result[i] = a[i[:len(a_shape)]] @ b[i[:len(b_shape)]]
         return self.to_torch(result)
 
-    def __init__(self, galois_field: GF) -> None:
+    def __init__(self, galois_field: GF = None) -> None:
         super().__init__()
+        if galois_field is None:
+            galois_field = GF(2 ** 8)
         self.galois_field = galois_field
 
     def invert(self, matrix: Tensor):
@@ -52,10 +54,10 @@ class Int8Field(Field):
         return self.to_torch(rnd.randint(0, self.galois_field.order, (n, k)))
 
     def to_torch(self, tensor) -> Tensor:
-        return torch.LongTensor(tensor)
+        return torch.FloatTensor(tensor)
 
     def to_field(self, tensor: Tensor):
-        return self.galois_field(tensor.type(torch.LongTensor).numpy())
+        return self.galois_field(tensor.type(torch.ShortTensor).numpy())
 
 
 if __name__ == '__main__':
@@ -65,7 +67,7 @@ if __name__ == '__main__':
     gf = GF(2 ** 8)
     plain = torch.randint(0, gf.order, (5, 3, 2, block_size + 63, 3))
     # plain = torch.rand((3, 2, block_size + 63, 2))
-    coding = StructuralCode(block_size, k, field=Int8Field(gf))
+    coding = StructuralCode(block_size, k, field=IntField(gf))
     # coding = StructuralCode(block_size, k)
     erasure_coding = ErasureCode(block_size, k)
     codeword = coding.code(plain, coding_dim)

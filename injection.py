@@ -14,9 +14,10 @@ from torch import Tensor
 from torch.nn import functional as F
 from torch.nn.common_types import _size_2_t
 
+from linearcode.int8 import IntField
 from sc import StructuralCode, ErasureCode
 from utils import lcs, biggest_divisor_smaller_than, quantize_tensor, radar_checksum, \
-    recover_with_tmr, recover_with_fradar, fradar_checksum
+    recover_with_tmr, recover_with_fradar, fradar_checksum, dequantize_tensor
 
 
 def convert(module, mapping=None, in_place=False, injection_index=None, extra_kwargs=None):
@@ -280,7 +281,7 @@ class QStructuralCodedConv2d(torch.nn.qat.Conv2d):
         self.k = k
         self.n = n
         self.threshold = threshold
-        self.sc = StructuralCode(self.n, self.k, self.threshold)
+        self.sc = StructuralCode(self.n, self.k, self.threshold, field=IntField())
         self.ec = ErasureCode(self.n, self.k)
         self.simple_checksum = None
         self.simple_checksum_tensors = None
@@ -299,31 +300,24 @@ class QStructuralCodedConv2d(torch.nn.qat.Conv2d):
         instance.activation_post_process = original.activation_post_process
         instance.load_state_dict(original.state_dict())
 
-        coded_weights = instance.sc.code(original.weight)
+        coded_weights = dequantize_tensor(instance.sc.code(quantize_tensor(original.weight, instance.weight_fake_quant, False)), instance.weight_fake_quant, False)
         instance.weight = torch.nn.Parameter(coded_weights)
-        checksum_tensors = (instance.weight,)
-        if original.bias is not None:
-            coded_bias = instance.sc.code(original.bias)
-            instance.bias = torch.nn.Parameter(coded_bias)
-            checksum_tensors += (instance.bias,)
+        checksum_tensors = instance.weight
         instance.simple_checksum_tensors = checksum_tensors
-        instance.simple_checksum = instance.ec.checksum(instance.simple_checksum_tensors)
-
-        instance.weight_fake_quant.scale = torch.nn.Parameter(
-            torch.amax(torch.abs(instance.weight), dim=(1, 2, 3)) / 127, False)
-        assert torch.max(torch.abs(instance.weight_fake_quant.zero_point)) == 0
-        instance.weight_fake_quant.zero_point = torch.nn.Parameter(torch.zeros(instance.weight.shape[0],dtype=instance.weight_fake_quant.zero_point.dtype), False)
+        instance.simple_checksum = instance.ec.checksum(quantize_tensor(instance.simple_checksum_tensors, instance.weight_fake_quant, False))
 
         return instance
 
     def forward(self, input: Tensor) -> Tensor:
-        redundant_feature_maps = super().forward(input)
-        decoded = self.sc.decode(redundant_feature_maps, dim=1)
-        if decoded is not None:
-            return decoded
-        self.detected = True
-        erasure = self.ec.erasure(self.simple_checksum_tensors, self.simple_checksum)
-        return self.sc.decode(redundant_feature_maps, 1, erasure)
+        quantized_weights = quantize_tensor(self.weight, self.weight_fake_quant, False)
+        decoded = self.sc.decode(quantized_weights, dim=0)
+        if decoded is None:
+            self.detected = True
+            erasure = self.ec.erasure(quantize_tensor(self.simple_checksum_tensors, self.weight_fake_quant, False), self.simple_checksum)
+            decoded = self.sc.decode(quantized_weights, 0, erasure)
+            self.weight[:] = dequantize_tensor(self.sc.code(decoded, 0), self.weight_fake_quant, False)
+            self.simple_checksum = self.ec.checksum(quantize_tensor(self.simple_checksum_tensors, self.weight_fake_quant, False))
+        return self._conv_forward(input, self.weight_fake_quant(dequantize_tensor(decoded, self.weight_fake_quant, False)), self.bias)
 
 
 class StructuralCodedLinear(torch.nn.Linear):
@@ -388,7 +382,7 @@ class QStructuralCodedLinear(torch.nn.qat.Linear):
         self.k = k
         self.n = n
         self.threshold = threshold
-        self.sc = StructuralCode(self.n, self.k, self.threshold)
+        self.sc = StructuralCode(self.n, self.k, self.threshold, field=IntField())
         self.ec = ErasureCode(self.n, self.k)
         self.simple_checksum = None
         self.simple_checksum_tensors = None
@@ -403,31 +397,24 @@ class QStructuralCodedLinear(torch.nn.qat.Linear):
         instance.activation_post_process = original.activation_post_process
         instance.load_state_dict(original.state_dict())
 
-        coded_weights = instance.sc.code(original.weight)
+        coded_weights = dequantize_tensor(instance.sc.code(quantize_tensor(original.weight, instance.weight_fake_quant, False)), instance.weight_fake_quant, False)
         instance.weight = torch.nn.Parameter(coded_weights)
-        instance.simple_checksum_tensors = (instance.weight,)
+        instance.simple_checksum_tensors = instance.weight
 
-        if original.bias is not None:
-            coded_bias = instance.sc.code(original.bias)
-            instance.bias = torch.nn.Parameter(coded_bias)
-            instance.simple_checksum_tensors += (instance.bias,)
-        instance.simple_checksum = instance.ec.checksum(instance.simple_checksum_tensors)
-
-        instance.weight_fake_quant.scale = torch.nn.Parameter(
-            torch.amax(torch.abs(instance.weight), dim=(1, 2, 3)) / 127, False)
-        assert torch.max(torch.abs(instance.weight_fake_quant.zero_point)) == 0
-        instance.weight_fake_quant.zero_point = torch.nn.Parameter(torch.zeros(instance.weight.shape[0],dtype=instance.weight_fake_quant.zero_point.dtype), False)
+        instance.simple_checksum = instance.ec.checksum(quantize_tensor(instance.simple_checksum_tensors, instance.weight_fake_quant, False))
 
         return instance
 
     def forward(self, input: Tensor) -> Tensor:
-        redundant_feature_maps = super().forward(input)
-        decoded = self.sc.decode(redundant_feature_maps, dim=1)
-        if decoded is not None:
-            return decoded
-        self.detected = True
-        erasure = self.ec.erasure(self.simple_checksum_tensors, self.simple_checksum)
-        return self.sc.decode(redundant_feature_maps, 1, erasure)
+        quantized_weights = quantize_tensor(self.weight, self.weight_fake_quant, False)
+        decoded = self.sc.decode(quantized_weights, dim=0)
+        if decoded is None:
+            self.detected = True
+            erasure = self.ec.erasure(self.simple_checksum_tensors, self.simple_checksum)
+            decoded = self.sc.decode(self.weight, 0, erasure)
+            self.weight[:] = dequantize_tensor(self.sc.code(decoded, 0), self.weight_fake_quant, False)
+            self.simple_checksum = self.ec.checksum(quantize_tensor(self.simple_checksum_tensors, self.weight_fake_quant, False))
+        return F.linear(input, self.weight_fake_quant(dequantize_tensor(decoded, self.weight_fake_quant, False)), self.bias)
 
 
 class ReorderingCodedConv2d(torch.nn.Conv2d):

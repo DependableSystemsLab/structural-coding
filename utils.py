@@ -44,23 +44,32 @@ def biggest_divisor_smaller_than(n, k):
     return 1
 
 
-def quantize_tensor(weight, fake_quant):
-    repeat = weight.flatten().shape[0] // fake_quant.scale.flatten().shape[0]
-    scale = torch.repeat_interleave(fake_quant.scale, repeat).reshape(weight.shape)
-    zero_point = torch.repeat_interleave(fake_quant.zero_point, repeat).reshape(weight.shape)
+def quantize_tensor(weight, fake_quant, signed=True):
+    repeat = weight[0].flatten().shape[0] // fake_quant.scale[0].flatten().shape[0]
+    shape_of_you = (fake_quant.scale.shape[0],) + weight.shape[1:]
+    scale = torch.repeat_interleave(fake_quant.scale, repeat).reshape(shape_of_you)
+    zero_point = torch.repeat_interleave(fake_quant.zero_point, repeat).reshape(shape_of_you)
     quantized = torch.clamp(
         torch.round(
-            weight / scale + zero_point),
+            weight[:scale.shape[0]] / scale + zero_point),
         fake_quant.quant_min,
         fake_quant.quant_max)
+    quantized = torch.cat((quantized, weight[quantized.shape[0]:]), 0)
+    if not signed:
+        quantized = quantized - fake_quant.quant_min
     return quantized
 
 
-def dequantize_tensor(quantized, fake_quant):
-    repeat = quantized.flatten().shape[0] // fake_quant.scale.flatten().shape[0]
-    scale = torch.repeat_interleave(fake_quant.scale, repeat).reshape(quantized.shape)
-    zero_point = torch.repeat_interleave(fake_quant.zero_point, repeat).reshape(quantized.shape)
-    return (quantized - zero_point) * scale
+def dequantize_tensor(quantized, fake_quant, signed=True):
+    if not signed:
+        quantized = quantized + fake_quant.quant_min
+
+    repeat = quantized[0].flatten().shape[0] // fake_quant.scale[0].flatten().shape[0]
+    shape_of_you = (fake_quant.scale.shape[0],) + quantized.shape[1:]
+    scale = torch.repeat_interleave(fake_quant.scale, repeat).reshape(shape_of_you)
+    zero_point = torch.repeat_interleave(fake_quant.zero_point, repeat).reshape(shape_of_you)
+    return torch.cat(((quantized[:scale.shape[0]] - zero_point) * scale,
+                      quantized[scale.shape[0]:]), 0)
 
 
 def radar_checksum(quantized):

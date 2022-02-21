@@ -1,10 +1,12 @@
 
 
 #  create model
+import os
 import sys
 import time
 
 import torch
+from numpy.distutils.fcompiler import str2bool
 
 from common.models import MODEL_CLASSES, LOSS_CLASSES
 from datasets import get_dataset
@@ -48,8 +50,8 @@ dataset = get_dataset(CONFIG)
 # evaluate
 with torch.no_grad():
     evaluation = []
-    # correct = 0
-    # total = 0
+    correct = 0
+    total = 0
     for i, (x, y) in enumerate(dataset):
         protection_modules = []
         for m in model.modules():
@@ -73,13 +75,14 @@ with torch.no_grad():
                            'protection': [m.get_internal_log() for m in protection_modules],
                            'batch_size': BATCH_SIZE})
         print("Done with batch {} after injection".format(i), file=sys.stderr)
-    #     correct += torch.sum(indices[:, 0] == y)
-    #     total += len(x)
-    # print(correct / total)
-    # total_loss = 0
-    # total = 0
-    # for e in evaluation:
-    #     total_loss += torch.sum(e['loss'])
-    #     total += len(e['label'])
-    # print(total_loss / total)
+        correct += torch.sum(indices[:, 0] == y)
+        total += len(x)
+    if str2bool(os.environ.get('PRINT_STAT', '0')):
+        print('accuracy', float(correct / total))
+        total_loss = 0
+        total = 0
+        for e in evaluation:
+            total_loss += torch.sum(e['loss'])
+            total += len(e['label'])
+        print('loss', float(total_loss / total))
     extend(CONFIG, evaluation, {**DEFAULTS, 'injection': CONFIG['injection']})
