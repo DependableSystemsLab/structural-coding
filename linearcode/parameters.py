@@ -110,14 +110,15 @@ CONSTRAINTS = {
         lambda c: any((c['flips'] != 0, all((c['injection'] == 0, c['protection'] == 'none')))),
         # only baseline
         # lambda c: isinstance(c['flips'], str) or isinstance(c['flips'], float) or c['flips'] == 0,
-        lambda c: c['protection'] in ('sc', 'none', 'clipper', 'tmr', 'radar', 'milr', 'ranger'),
+        lambda c: c['protection'] in ('sc', 'none', 'clipper', 'ranger'),
         lambda c: c['model'] not in ('vgg19',),
         lambda c: c['quantization'],
 
         # retry
-        lambda c: c['protection'] in ('sc',),
-        lambda c: c['model'] in ('resnet50',),
-        lambda c: c['flips'] == 'row',
+        lambda c: c['protection'] in ('none', 'sc', 'clipper', 'ranger',),
+        lambda c: c['protection'] in ('sc', ),
+        lambda c: c['model'] in ('alexnet',),
+        lambda c: c['flips'] == 'column',
     ),
 }[SHARD]
 

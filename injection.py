@@ -69,8 +69,14 @@ def bitflip(f, pos):
 
     f_ = pack(packing, f)
     b = list(unpack('B' * n_bytes, f_))
-    [q, r] = divmod(pos, 8)
-    b[q] ^= 1 << r
+    if pos == 'all':
+        flip_pattern = (1 << 8) - 1
+        for i in range(len(b)):
+            b[i] ^= flip_pattern
+    else:
+        [q, r] = divmod(pos, 8)
+        flip_pattern = 1 << r
+        b[q] ^= flip_pattern
     f_ = pack('B' * n_bytes, *b)
     f = unpack(packing, f_)
     return f[0]

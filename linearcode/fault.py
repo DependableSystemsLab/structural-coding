@@ -7,6 +7,7 @@ import torch.nn.qat
 
 from injection import bitflip
 from settings import PROBABILITIES
+from utils import quantize_tensor, dequantize_tensor
 
 _4KB = 4 * 2 ** 10 * 8
 _2B = 2 * 8
@@ -133,6 +134,7 @@ def flip_bits(bit_indices_to_flip, bit_width, config, modules, parameters, granu
         parameter = next(pointer)
         module = next(module_pointer)
         offset = 0
+        quantized_cache = {}
         for bit_index in sorted(bit_indices_to_flip):
             parameter_index = bit_index // bit_width - offset
             while parameter_index >= len(parameter) and parameter is not None:
@@ -142,23 +144,22 @@ def flip_bits(bit_indices_to_flip, bit_width, config, modules, parameters, granu
                 module = next(module_pointer, None)
             if config['quantization']:
                 for _ in range(2):
-                    repeat = parameter.shape[0] // module.weight_fake_quant.scale.flatten().shape[0]
-                    scale = torch.repeat_interleave(module.weight_fake_quant.scale, repeat)[parameter_index]
-                    zero_point = torch.repeat_interleave(module.weight_fake_quant.zero_point, repeat)[parameter_index]
-                    quantized = torch.clamp(
-                        torch.round(parameter[parameter_index] / scale + zero_point),
-                        module.weight_fake_quant.quant_min,
-                        module.weight_fake_quant.quant_max)
-                    if granularity == _2B:
-                        flipped_quantized = module.weight_fake_quant.quant_max
-                        parameter[parameter_index] = (flipped_quantized - zero_point) * scale
+                    if parameter in quantized_cache:
+                        quantized, _ = quantized_cache[parameter]
                     else:
-                        parameter[parameter_index] = (bitflip(int(quantized), bit_index % bit_width) - zero_point) * scale
+                        quantized = quantize_tensor(parameter, module.weight_fake_quant)
+                        quantized_cache[parameter] = (quantized, module)
+                    if granularity == _2B:
+                        quantized[parameter_index] = bitflip(int(quantized[parameter_index]), 'all')
+                    else:
+                        quantized[parameter_index] = bitflip(int(quantized[parameter_index]), bit_index % bit_width)
                     parameter_index += 1
-                    if granularity == 1:
+                    if granularity == 1 or len(parameter) == parameter_index:
                         break
             else:
                 parameter[parameter_index] = bitflip(float(parameter[parameter_index]), bit_index % bit_width)
+        for p, (q, m) in quantized_cache.items():
+            p[:] = dequantize_tensor(q, m.weight_fake_quant)
     else:
         all_params = torch.cat(parameters)
         if granularity == _4KB:

@@ -4,6 +4,7 @@
 #SBATCH --array 0-720
 
 export IMAGENET_ROOT=/home/aasgarik/scratch/data/imagenet
+export SHARD=quantized
 export PYTHONPATH=$PYTHONPATH:/home/aasgarik/projects/def-karthikp/aasgarik/reasilience
 source /home/aasgarik/projects/def-karthikp/aasgarik/dnnfault/venv/bin/activate
 INTERNAL_SIZE=40
