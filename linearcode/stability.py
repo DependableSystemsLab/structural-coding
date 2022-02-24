@@ -28,7 +28,7 @@ for model_name, model_class in MODEL_CLASSES:
 
     correction_filename = get_storage_filename({'fig': 'stability',
                                                 'model': model_name},
-                                               extension='.tex', storage='../ubcthesis/data/')
+                                               extension='.tex', storage='../thesis/data/')
     with open(correction_filename, mode='w') as correction_file:
         model = model_class(pretrained=True)
         model.eval()

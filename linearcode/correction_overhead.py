@@ -44,7 +44,7 @@ def measure_time(input_image, _model):
 measure = count_flops
 
 memory_filename = get_storage_filename({'fig': 'memory_overhead'},
-                                          extension='.tex', storage='../ubcthesis/data/')
+                                          extension='.tex', storage='../thesis/data/')
 
 with open(memory_filename, mode='w') as memory_file:
     for model_name, model_class in MODEL_CLASSES:
@@ -61,7 +61,7 @@ for protection in (
         # 'tmr'
 ):
     detection_filename = get_storage_filename({'fig': 'detection_flops_overhead', 'protection': protection},
-                                              extension='.tex', storage='../ubcthesis/data/')
+                                              extension='.tex', storage='../thesis/data/')
 
     with open(detection_filename, mode='w') as detection_file:
         for model_name, model_class in MODEL_CLASSES:
@@ -69,7 +69,7 @@ for protection in (
             #     continue
             correction_filename = get_storage_filename({'fig': 'correction_flops_overhead',
                                                         'model': model_name},
-                                                       extension='.tex', storage='../ubcthesis/data/')
+                                                       extension='.tex', storage='../thesis/data/')
             with open(correction_filename, mode='w') as correction_file:
                 with torch.no_grad():
 

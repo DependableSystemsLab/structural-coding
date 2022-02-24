@@ -1,5 +1,6 @@
 import bisect
 import math
+import os
 from collections import defaultdict
 from copy import copy
 
@@ -468,7 +469,7 @@ def sdc_protection_scales_with_granularity():
             filename = get_storage_filename({'fig': 'sdc_protection_scales_with_granularity',
                                              'flips': flips,
                                              'protection': protection},
-                                            extension='.tex', storage='../ubcthesis/data/')
+                                            extension='.tex', storage='../thesis/data/')
             with open(filename, mode='w') as data_file:
                 for baseline_config in baseline_configs:
                     data = load(baseline_config, {**DEFAULTS, 'injection': baseline_config['injection']})
@@ -513,7 +514,7 @@ def regression_recovery():
             filename = get_storage_filename({'fig': 'regression_recovery',
                                              'model': baseline_config['model'],
                                              'protection': protection},
-                                            extension='.tex', storage='../ubcthesis/data/')
+                                            extension='.tex', storage='../thesis/data/')
             with open(filename, mode='w') as data_file:
                 for flips in DOMAIN['flips']:
                     if isinstance(flips, int):
@@ -561,7 +562,7 @@ def rewhammer_recovery():
 
         filename = get_storage_filename({'fig': 'rowhammer_recovery',
                                          'protection': protection},
-                                        extension='.tex', storage='../ubcthesis/data/')
+                                        extension='.tex', storage='../thesis/data/')
         with open(filename, mode='w') as data_file:
             for baseline_config in baseline_configs:
                 data = load(baseline_config, {**DEFAULTS, 'injection': baseline_config['injection']})
@@ -608,7 +609,7 @@ def sdc_protection_scales_with_faults():
             filename = get_storage_filename({'fig': 'sdc_protection_scales_with_faults',
                                              'model': baseline_config['model'],
                                              'protection': protection},
-                                            extension='.tex', storage='../ubcthesis/data/')
+                                            extension='.tex', storage='../thesis/data/')
             with open(filename, mode='w') as data_file:
                 for flips in DOMAIN['flips']:
                     if not isinstance(flips, int) or flips == 0:
@@ -651,7 +652,7 @@ def sdc_protection_scales_with_ber():
             filename = get_storage_filename({'fig': 'sdc_protection_scales_with_ber',
                                              'flips': '10e{}'.format(int(round(math.log(float(flips), 10)))),
                                              'protection': protection},
-                                            extension='.tex', storage='../ubcthesis/data/')
+                                            extension='.tex', storage='../thesis/data/')
             with open(filename, mode='w') as data_file:
                 for baseline_config in baseline_configs:
                     data = load(baseline_config, {**DEFAULTS, 'injection': baseline_config['injection']})

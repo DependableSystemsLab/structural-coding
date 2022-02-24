@@ -41,12 +41,12 @@ DOMAIN = {
 # don't use short circuit execution here
 CONSTRAINTS = {
     'default': (
-        lambda c: c['dataset'] in ('imagenet_ds_128', 'driving_dataset_test'),
+        lambda c: c['dataset'] in ('imagenet_ds_128', 'driving_dataset_test', 'imagenet'),
         lambda c: any((
-            all((c['dataset'] == 'imagenet_ds_128', c['model'] != 'e2e')),
+            all((c['dataset'] != 'driving_dataset_test', c['model'] != 'e2e')),
             all((c['dataset'] == 'driving_dataset_test', c['model'] == 'e2e'))
         )),
-        lambda c: c['sampler'] == 'none',
+        lambda c: c['sampler'] in ('none', 'tiny'),
         # ensure baseline execution
         lambda c: any((c['flips'] != 0, all((c['injection'] == 0, c['protection'] == 'none')))),
         # only baseline
@@ -54,10 +54,6 @@ CONSTRAINTS = {
         lambda c: c['protection'] in ('sc', 'none', 'clipper', 'tmr', 'radar', 'milr', 'ranger'),
         lambda c: c['model'] not in ('vgg19',),
         lambda c: not c['quantization'],
-
-        # retry
-        lambda c: c['protection'] in ('sc', 'none', 'milr'),
-        lambda c: c['model'] in ('mobilenet', 'squeezenet', 'shufflenet'),
     ),
     'missing': (
         lambda c: c['dataset'] in ('imagenet_ds_128', 'driving_dataset_test'),
@@ -122,6 +118,22 @@ CONSTRAINTS = {
     ),
 }[SHARD]
 
+
+class Comparator:
+
+    def __init__(self, k, v):
+        self.k = k
+        self.v = v
+
+    def __call__(self, c):
+        return c[self.k] == self.v
+
+
+for overridden in eval(os.environ.get("CONSTRAINTS", "{}")).items():
+    key, value = overridden
+    CONSTRAINTS = CONSTRAINTS + (Comparator(key, value), )
+
+
 DEFAULTS = {
     'sampler': 'none',
     'dataset': 'imagenet',
@@ -167,7 +179,12 @@ def query_configs(constraints, domain=None):
 
 SLURM_ARRAY = query_configs(CONSTRAINTS)
 
-CONFIG = SLURM_ARRAY[int(os.environ.get('INTERNAL_SLURM_ARRAY_TASK_ID'))]
+if not SLURM_ARRAY:
+    print("Ask for help from the authors, or stick to the sample commands!")
+    exit(1)
+
+CONFIG = SLURM_ARRAY[int(os.environ.get('INTERNAL_SLURM_ARRAY_TASK_ID', '0'))]
+print(CONFIG)
 
 if __name__ == '__main__':
     file_names = set(get_storage_filename(i, {**DEFAULTS, 'injection': i['injection']}) for i in SLURM_ARRAY)

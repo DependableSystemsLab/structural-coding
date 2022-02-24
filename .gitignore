@@ -1,4 +1,4 @@
-**/.data
+# **/.data
 
 # Byte-compiled / optimized / DLL files
 pruning/results
@@ -132,4 +132,4 @@ dmypy.json
 .pyre/
 
 # project
-data
+# data

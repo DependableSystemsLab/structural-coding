@@ -127,7 +127,6 @@ def inject_memory_fault(model, config):
 
 def flip_bits(bit_indices_to_flip, bit_width, config, modules, parameters, granularity, rnd):
     print('Injecting', len(bit_indices_to_flip), 'faults at granularity {}'.format(granularity))
-    print(config)
     if granularity == 1 or config['quantization']:
         pointer = iter(parameters)
         module_pointer = iter(modules)

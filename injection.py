@@ -257,12 +257,7 @@ class StructuralCodedConv2d(torch.nn.Conv2d):
                        original.padding_mode, **extra_kwarg)
         coded_weights = instance.sc.code(original.weight)
         instance.weight = torch.nn.Parameter(coded_weights)
-        checksum_tensors = (instance.weight,)
-        if original.bias is not None:
-            # coded_bias = instance.sc.code(original.bias)
-            # instance.bias = torch.nn.Parameter(coded_bias)
-            instance.bias = torch.nn.Parameter(original.bias)
-            # checksum_tensors += (instance.bias,)
+        checksum_tensors = instance.weight
         instance.simple_checksum_tensors = checksum_tensors
         instance.simple_checksum = instance.ec.checksum(instance.simple_checksum_tensors)
         return instance
@@ -358,12 +353,7 @@ class StructuralCodedLinear(torch.nn.Linear):
         instance = cls(original.in_features, original.out_features, original.bias is not None, **extra_kwargs)
         coded_weights = instance.sc.code(original.weight)
         instance.weight = torch.nn.Parameter(coded_weights)
-        instance.simple_checksum_tensors = (instance.weight,)
-        if original.bias is not None:
-            # coded_bias = instance.sc.code(original.bias)
-            # instance.bias = torch.nn.Parameter(coded_bias)
-            instance.bias = torch.nn.Parameter(original.bias)
-            # instance.simple_checksum_tensors += (instance.bias,)
+        instance.simple_checksum_tensors = instance.weight
         instance.simple_checksum = instance.ec.checksum(instance.simple_checksum_tensors)
         return instance
 
@@ -842,7 +832,7 @@ class FRADARConv2d(torch.nn.Conv2d):
         return self._conv_forward(input, recovered, self.bias)
 
 
-MILR_BATCH_SIZE = 16 * 9
+MILR_BATCH_SIZE = 4
 
 
 class MILRLinear(torch.nn.Linear):

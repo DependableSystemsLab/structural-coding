@@ -49,7 +49,7 @@ for model_name, model_class in MODEL_CLASSES:
     print(sum(m.weight.nelement() for m in model.modules() if hasattr(m, 'weight')) / sum(p.nelement() for p in model.parameters()))
 
 memory_filename = get_storage_filename({'fig': 'memory_overhead', 'protection': 'sc'},
-                                          extension='.tex', storage='../ubcthesis/data/')
+                                          extension='.tex', storage='../thesis/data/')
 
 with open(memory_filename, mode='w') as memory_file:
     for model_name, model_class in MODEL_CLASSES:
@@ -62,7 +62,7 @@ with open(memory_filename, mode='w') as memory_file:
 
 
 memory_filename = get_storage_filename({'fig': 'memory_overhead', 'protection': 'milr'},
-                                          extension='.tex', storage='../ubcthesis/data/')
+                                          extension='.tex', storage='../thesis/data/')
 
 with open(memory_filename, mode='w') as memory_file:
     for model_name, model_class in MODEL_CLASSES:
@@ -81,7 +81,7 @@ for protection in (
         'radar',
 ):
     detection_filename = get_storage_filename({'fig': 'detection_time_overhead', 'protection': protection},
-                                              extension='.tex', storage='../ubcthesis/data/')
+                                              extension='.tex', storage='../thesis/data/')
 
     with open(detection_filename, mode='w') as detection_file:
         for model_name, model_class in MODEL_CLASSES:

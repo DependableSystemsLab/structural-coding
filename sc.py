@@ -22,7 +22,7 @@ class ErasureCode:
                 tensor = tensor[0]
             return torch.sum(tensor, dim=tuple(d for d in range(len(tensor.shape)) if d != dim))
 
-    def erasure(self, tensor: [Tensor, Tuple[Tensor]], checksum: Tensor, dim: int = 0) -> Tensor:
+    def erasure(self, tensor: Tensor, checksum: Tensor, dim: int = 0) -> Tensor:
         result = LongTensor(())
         for start_index in range(0, tensor.shape[dim], self.n + self.k):
             sub_tensor = tensor[tuple(slice(None) if d != dim else slice(start_index, start_index + self.n + self.k) for d, _ in enumerate(tensor.shape))]
@@ -202,8 +202,6 @@ class StructuralCode:
         return torch.transpose(tensor, destination, dim)
 
     def checksum(self, systematic: Tensor, dim=0) -> Tensor:
-        # return torch.sum(systematic, dim=dim)
-        # TODO use some correct thing overhead-wise
         return self._code(systematic, dim, 1)[0]
 
     def extract_systematic(self, tensor: Tensor, dim: int = 0) -> Tensor:

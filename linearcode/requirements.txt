@@ -1,0 +1,2 @@
+galois==0.0.24
+torchvision==0.11.3

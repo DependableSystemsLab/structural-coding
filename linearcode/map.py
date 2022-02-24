@@ -75,10 +75,10 @@ with torch.no_grad():
                            'protection': [m.get_internal_log() for m in protection_modules],
                            'batch_size': BATCH_SIZE})
         print("Done with batch {} after injection".format(i), file=sys.stderr)
-        correct += torch.sum(indices[:, 0] == y)
+        correct += int(torch.sum(indices[:, 0] == y))
         total += len(x)
     if str2bool(os.environ.get('PRINT_STAT', '0')):
-        print('accuracy', float(correct / total))
+        print('accuracy', float(correct / total), 'correct', correct, 'all', total)
         total_loss = 0
         total = 0
         for e in evaluation:
