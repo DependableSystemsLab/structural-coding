@@ -102,6 +102,7 @@ CONSTRAINTS = {
         lambda c: any((c['flips'] != 0, all((c['injection'] == 0, c['protection'] == 'none')))),
         # only baseline
         lambda c: c['protection'] in ('sc', 'none'),
+        lambda c: c['flips'] in (0, 'row'),
         lambda c: c['model'] in ('alexnet', 'resnet50', 'googlenet'),
         lambda c: c['quantization']
     ),

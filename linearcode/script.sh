@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --time=18:00:00
 #SBATCH --mem=16G
-#SBATCH --array 0-660
+#SBATCH --array 0-60
 
 export IMAGENET_ROOT=/home/aasgarik/scratch/data/imagenet
 export SHARD=quantized
