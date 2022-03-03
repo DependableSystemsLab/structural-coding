@@ -124,3 +124,9 @@ PROTECTIONS = {
         'milr': apply_milr,
     }
 }
+
+
+def apply_sc_automatically(model, n, k):
+    model = normalize_model(model, None)
+    model = apply_sc(model, {'flips': k, 'n': n})
+    return model
