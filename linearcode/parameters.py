@@ -96,19 +96,14 @@ CONSTRAINTS = {
         lambda c: isinstance(c['flips'], float),
     ),
     'quantized': (
-        lambda c: c['dataset'] in ('imagenet_ds_128', 'driving_dataset_test', 'imagenet'),
-        lambda c: any((
-            all((c['dataset'] in ('imagenet', 'imagenet_ds_128'), c['model'] != 'e2e')),
-            all((c['dataset'] == 'driving_dataset_test', c['model'] == 'e2e'))
-        )),
+        lambda c: c['dataset'] == 'imagenet_ds_128',
+        lambda c: c['sampler'] == 'none',
         # ensure baseline execution
         lambda c: any((c['flips'] != 0, all((c['injection'] == 0, c['protection'] == 'none')))),
         # only baseline
-        # lambda c: isinstance(c['flips'], str) or isinstance(c['flips'], float) or c['flips'] == 0,
-        lambda c: c['protection'] in ('sc', 'none', 'clipper', 'ranger'),
-        lambda c: c['model'] not in ('vgg19',),
-        lambda c: c['quantization'],
-
+        lambda c: c['protection'] in ('sc', 'none'),
+        lambda c: c['model'] in ('alexnet', 'resnet50', 'googlenet'),
+        lambda c: c['quantization']
     ),
 }[SHARD]
 
