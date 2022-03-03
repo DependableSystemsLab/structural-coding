@@ -1,3 +1,11 @@
+data/**
+!data/.gitignore
+!data/random20classes_FI
 venv
 .git
+common/comma_fast_0.pth
+common/dave/
+linearcode/results_dec2/
+linearcode/results_nov29/
+results/
 
