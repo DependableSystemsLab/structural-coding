@@ -149,7 +149,7 @@ def flip_bits(bit_indices_to_flip, bit_width, config, modules, parameters, granu
                         quantized = quantize_tensor(parameter, module.weight_fake_quant)
                         quantized_cache[parameter] = (quantized, module)
                     if granularity == _2B:
-                        quantized[parameter_index] = bitflip(int(quantized[parameter_index]), 'all')
+                        quantized[parameter_index] = 127
                     else:
                         quantized[parameter_index] = bitflip(int(quantized[parameter_index]), bit_index % bit_width)
                     parameter_index += 1

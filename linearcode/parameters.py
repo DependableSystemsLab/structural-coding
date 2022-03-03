@@ -96,12 +96,11 @@ CONSTRAINTS = {
         lambda c: isinstance(c['flips'], float),
     ),
     'quantized': (
-        lambda c: c['dataset'] in ('imagenet_ds_128', 'driving_dataset_test'),
+        lambda c: c['dataset'] in ('imagenet_ds_128', 'driving_dataset_test', 'imagenet'),
         lambda c: any((
-            all((c['dataset'] == 'imagenet_ds_128', c['model'] != 'e2e')),
+            all((c['dataset'] in ('imagenet', 'imagenet_ds_128'), c['model'] != 'e2e')),
             all((c['dataset'] == 'driving_dataset_test', c['model'] == 'e2e'))
         )),
-        lambda c: c['sampler'] == 'none',
         # ensure baseline execution
         lambda c: any((c['flips'] != 0, all((c['injection'] == 0, c['protection'] == 'none')))),
         # only baseline
@@ -110,11 +109,6 @@ CONSTRAINTS = {
         lambda c: c['model'] not in ('vgg19',),
         lambda c: c['quantization'],
 
-        # retry
-        lambda c: c['protection'] in ('none', 'sc', 'clipper', 'ranger',),
-        lambda c: c['protection'] in ('sc', ),
-        lambda c: c['model'] in ('alexnet',),
-        lambda c: c['flips'] == 'column',
     ),
 }[SHARD]
 
@@ -184,7 +178,6 @@ if not SLURM_ARRAY:
     exit(1)
 
 CONFIG = SLURM_ARRAY[int(os.environ.get('INTERNAL_SLURM_ARRAY_TASK_ID', '0'))]
-print(CONFIG)
 
 if __name__ == '__main__':
     file_names = set(get_storage_filename(i, {**DEFAULTS, 'injection': i['injection']}) for i in SLURM_ARRAY)
