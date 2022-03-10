@@ -3,6 +3,8 @@
 #SBATCH --mem=16G
 #SBATCH --array 0-0
 
+module load singularity
+
 export IMAGENET_ROOT=/home/aasgarik/scratch/data/imagenet
 export SHARD=quantized
 
