@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --time=18:00:00
 #SBATCH --mem=16G
-#SBATCH --array 0-0
+#SBATCH --array 1-60
 
 module load singularity
 mkdir -p ../shome
