@@ -6,7 +6,7 @@
 module load singularity
 mkdir -p ../shome
 
-export IMAGENET_ROOT=/home/aasgarik/scratch/data/imagenet
+export IMAGENET_ROOT=/scratch/aasgarik/data/imagenet/
 export SHARD=quantized
 
 INTERNAL_SIZE=40
