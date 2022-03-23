@@ -1,13 +1,13 @@
 #!/bin/bash
 #SBATCH --time=18:00:00
 #SBATCH --mem=16G
-#SBATCH --array 1-60
+#SBATCH --array 1-480
 
 module load singularity
 mkdir -p ../shome
 
 export IMAGENET_ROOT=/scratch/aasgarik/data/imagenet/
-export SHARD=quantized
+export SHARD=optimal
 
 INTERNAL_SIZE=40
 for i in $( eval echo {1..$INTERNAL_SIZE} ); do

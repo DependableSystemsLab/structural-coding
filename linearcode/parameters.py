@@ -35,7 +35,7 @@ DOMAIN = {
               # 'chip',
               # 'flr',
               'rowhammer'),
-    'protection': ('none', 'clipper', 'ranger', 'sc', 'radar', 'milr', 'flr_mr', 'tmr'),
+    'protection': ('none', 'clipper', 'ranger', 'sc', 'radar', 'milr', 'flr_mr', 'tmr', 'opt'),
 }
 
 # don't use short circuit execution here
@@ -105,6 +105,17 @@ CONSTRAINTS = {
         lambda c: c['flips'] in (0, 'row'),
         lambda c: c['model'] in ('alexnet', 'resnet50', 'googlenet'),
         lambda c: c['quantization']
+    ),
+
+    'optimal': (
+        lambda c: c['dataset'] == 'imagenet_ds_128',
+        lambda c: c['sampler'] == 'none',
+        # ensure baseline execution
+        lambda c: any((c['flips'] != 0, all((c['injection'] == 0, c['protection'] == 'none')))),
+        lambda c: c['flips'] in PROBABILITIES + (0, ),
+        # only baseline
+        lambda c: c['protection'] in ('opt', 'none'),
+        lambda c: not c['quantization']
     ),
 }[SHARD]
 
