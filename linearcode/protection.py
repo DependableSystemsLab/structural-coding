@@ -24,6 +24,21 @@ def apply_sc(model, config):
     return model
 
 
+def apply_opt_sc(model, config):
+    model, _ = convert(model, mapping={
+        torch.nn.Conv2d: StructuralCodedConv2d,
+        torch.nn.qat.Conv2d: QStructuralCodedConv2d,
+        torch.nn.Linear: StructuralCodedLinear,
+        torch.nn.qat.Linear: QStructuralCodedLinear,
+    }, extra_kwargs={
+        'k': 'opt',
+        'threshold': config.get('threshold', 0.00),
+        'n': config.get('n', 256),
+        'ber': config['flips']
+    })
+    return model
+
+
 def normalize_model(model, _):
     model, _ = convert(model, mapping={
         torch.nn.Conv2d: NormalizedConv2d,
@@ -109,6 +124,7 @@ PROTECTIONS = {
     'before_quantization': {
         'radar': lambda model, config: model,
         'sc': normalize_model,
+        'opt': normalize_model,
         # 'sc': lambda model, config: model,
         'clipper': apply_clipper,
         'ranger': apply_ranger,
@@ -118,6 +134,7 @@ PROTECTIONS = {
     'after_quantization': {
         'radar': apply_radar,
         'sc': apply_sc,
+        'opt': apply_opt_sc,
         'clipper': lambda model, config: model,
         'ranger': lambda model, config: model,
         'tmr': lambda model, config: model,

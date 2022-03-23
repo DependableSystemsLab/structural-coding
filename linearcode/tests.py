@@ -26,6 +26,16 @@ class TestSCProtects(TestSDC, TestCase):
         return s == 0
 
 
+class TestOptSCProtects(TestSDC, TestCase):
+    __test__ = False
+    baseline_config = {'injection': 0, 'model': 'resnet50', 'quantization': False, 'sampler': 'tiny',
+                       'dataset': 'imagenet', 'flips': 0, 'protection': 'none'}
+    config = {'flips': PROBABILITIES[0], 'protection': 'opt', 'ber': PROBABILITIES[0]}
+    message = 'BER did not cause SDC.'
+
+    def criterion(self, s, e):
+        return s == 0
+
 class TestQSCProtects(TestSDC, TestCase):
     baseline_config = {'injection': 0, 'model': 'resnet50', 'quantization': False, 'sampler': 'tiny',
                        'dataset': 'imagenet', 'flips': 0, 'protection': 'none'}

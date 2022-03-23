@@ -1,4 +1,5 @@
 import math
+from pprint import pprint
 
 from common.models import MODEL_CLASSES
 from linearcode.fault import get_target_modules
@@ -12,6 +13,8 @@ print('BER', end=' ')
 for ber in ('one-size-fits-all', ) + PROBABILITIES:
     print(ber, end=' ')
 print()
+
+optimal_points = {}
 
 for protection_probability in (0.90, ):
 
@@ -49,6 +52,7 @@ for protection_probability in (0.90, ):
                     k = 32
                     n = 32 + 256
 
+                optimal_points[tuple(module.weight.shape) + (ber, )] = (n, k)
                 scheme_percentage = k * math.ceil(channels / n) / channels
                 weighted_sum += k * math.ceil(channels / n) * within_channel_bits
                 sum_of_weights += channels * within_channel_bits
@@ -62,3 +66,5 @@ for protection_probability in (0.90, ):
                 baseline_overhead = overhead_percentage
             print(100 * (baseline_overhead - overhead_percentage) / baseline_overhead, end=' ')
         print()
+
+pprint(optimal_points)
