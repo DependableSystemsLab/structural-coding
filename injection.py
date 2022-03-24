@@ -630,7 +630,6 @@ class StructuralCodedConv2d(torch.nn.Conv2d):
             extra_kwarg = copy.copy(extra_kwarg)
             if 'ber' in extra_kwarg:
                 _n, _k = BER_OPTIMAL_CONFIGS[tuple(original.weight.shape) + (extra_kwarg.pop('ber'),)]
-                print(_n, _k)
                 extra_kwarg['k'] = _k
                 extra_kwarg['n'] = _n - _k
 

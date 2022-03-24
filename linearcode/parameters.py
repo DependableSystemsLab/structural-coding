@@ -110,6 +110,7 @@ CONSTRAINTS = {
     'optimal': (
         lambda c: c['dataset'] == 'imagenet_ds_128',
         lambda c: c['sampler'] == 'none',
+        lambda c: c['model'] not in ('vgg19', 'e2e'),
         # ensure baseline execution
         lambda c: any((c['flips'] != 0, all((c['injection'] == 0, c['protection'] == 'none')))),
         lambda c: c['flips'] in PROBABILITIES + (0, ),
