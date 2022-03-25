@@ -16,7 +16,7 @@ print()
 
 optimal_points = {}
 
-for protection_probability in (0.90, ):
+for protection_probability in (0.99, ):
 
     baseline_overhead = None
 
@@ -44,7 +44,7 @@ for protection_probability in (0.90, ):
                     channel_does_not_corrupt = (1 - ber) ** within_channel_bits
                     channel_corrupts = 1 - channel_does_not_corrupt
                     k = 1
-                    n = k + 256
+                    n = k + min(256, channels)
                     while binom.cdf(k, n, channel_corrupts) < protection_probability:
                         k += 1
                         n += 1

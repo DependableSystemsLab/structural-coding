@@ -39,7 +39,7 @@ DOMAIN = {
 }
 
 # don't use short circuit execution here
-CONSTRAINTS = {
+SHARDS_CONSTRAINTS = {
     'default': (
         lambda c: c['dataset'] in ('imagenet_ds_128', 'driving_dataset_test', 'imagenet'),
         lambda c: any((
@@ -113,12 +113,15 @@ CONSTRAINTS = {
         lambda c: c['model'] not in ('vgg19', 'e2e'),
         # ensure baseline execution
         lambda c: any((c['flips'] != 0, all((c['injection'] == 0, c['protection'] == 'none')))),
+        lambda c: any((c['protection'] != 'none', all((c['injection'] == 0, c['flips'] == 0)))),
         lambda c: c['flips'] in PROBABILITIES + (0, ),
         # only baseline
         lambda c: c['protection'] in ('opt', 'none'),
         lambda c: not c['quantization']
     ),
-}[SHARD]
+}
+
+CONSTRAINTS = SHARDS_CONSTRAINTS[SHARD]
 
 
 class Comparator:

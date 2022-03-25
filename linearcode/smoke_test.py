@@ -6,7 +6,7 @@ for config in SLURM_ARRAY:
     config['sampler'] = 'tiny'
     if config['protection'] != 'opt':
         continue
-    if config['injection'] >= 2:
+    if config['injection'] >= 1:
         break
     print(config)
     evaluate_config(config)

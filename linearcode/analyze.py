@@ -12,7 +12,7 @@ from analysis import sdc, merge
 from common.models import MODEL_CLASSES
 from linearcode.fault import inject_memory_fault, get_target_modules
 from linearcode.models import get_model
-from linearcode.parameters import SLURM_ARRAY, DEFAULTS, query_configs, DOMAIN
+from linearcode.parameters import SLURM_ARRAY, DEFAULTS, query_configs, DOMAIN, SHARDS_CONSTRAINTS
 from linearcode.protection import PROTECTIONS
 from storage import load, load_pickle, get_storage_filename
 
@@ -679,4 +679,23 @@ def parameter_pages():
         print(model_name, sum(numbers) / len(numbers), min(numbers), sorted(numbers))
 
 
-parameter_pages()
+def optimal_protection():
+    for config in query_configs(SHARDS_CONSTRAINTS['optimal'] + (lambda c: c['injection'] == 0 and c['protection'] == 'opt', )):
+        data = []
+        for e in load(config, {**DEFAULTS, 'injection': 0}):
+            data.extend(e)
+        baseline_config = copy(config)
+        baseline_config['protection'] = 'none'
+        baseline_config['flips'] = 0
+        baseline = load(baseline_config, {**DEFAULTS, 'injection': 0})[0]
+        print(config, sdc(baseline, baseline, over_approximate=False))
+
+
+ANALYSIS_ARRAY = (
+    optimal_protection,
+)
+
+SLURM_ARRAY_TASK_ID = int(os.environ.get('SLURM_ARRAY_TASK_ID', '0'))
+
+if __name__ == '__main__':
+    ANALYSIS_ARRAY[SLURM_ARRAY_TASK_ID]()
