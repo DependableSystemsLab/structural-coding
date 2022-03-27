@@ -79,11 +79,14 @@ for protection in (
                         image = imagenet_image
                     now = time()
                     model = model_class(pretrained=True)
-                    print(time() - now)
+                    load_time = time() - now
+                    print(load_time)
                     model = model
                     image = image
 
+                    now = time()
                     baseline_flops = measure(image, model)
+                    inference_time = time() - now
                     sc_normalized_model = PROTECTIONS['before_quantization'][protection](model, None)
                     sc_detection_model = PROTECTIONS['after_quantization'][protection](sc_normalized_model, {'flips': 1})
                     sc_detection_flops = measure(image, sc_detection_model)
@@ -112,7 +115,7 @@ for protection in (
 
                         now = time()
                         sc_correction_flops = measure(image, sc_correction_model)
-                        print(time() - now)
+                        print(load_time, inference_time, time() - now)
 
                         print(k,
                               100 * (sc_correction_flops / baseline_flops - 1), file=correction_file)

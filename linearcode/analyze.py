@@ -688,7 +688,7 @@ def optimal_protection():
         baseline_config['protection'] = 'none'
         baseline_config['flips'] = 0
         baseline = load(baseline_config, {**DEFAULTS, 'injection': 0})[0]
-        print(config, sdc(baseline, baseline, over_approximate=False))
+        print(config, sdc(baseline, data, over_approximate=False))
 
 
 ANALYSIS_ARRAY = (
