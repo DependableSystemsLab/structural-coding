@@ -4,7 +4,7 @@ from linearcode.parameters import SLURM_ARRAY
 for config in SLURM_ARRAY:
     config['dataset'] = 'imagenet'
     config['sampler'] = 'tiny'
-    if config['protection'] != 'opt':
+    if config['protection'] not in ('secded', 'chipkill'):
         continue
     if config['injection'] >= 1:
         break

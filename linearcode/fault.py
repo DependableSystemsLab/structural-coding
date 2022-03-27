@@ -13,6 +13,43 @@ _4KB = 4 * 2 ** 10 * 8
 _2B = 2 * 8
 
 
+def apply_ecc(bit_indices_to_flip, size, config):
+    if config['protection'] in ('secded', 'chipkill'):
+        original_size = 8 * size // 9
+        result = []
+        sorted_errors = sorted(bit_indices_to_flip)
+        content = []
+        redundancy = []
+        for i in sorted_errors:
+            if i < size:
+                content.append(i)
+            else:
+                redundancy.append(i)
+        i, j = 0, 0
+        while i < len(content):
+            block = [content[i]]
+            i += 1
+            block_start = (block[0] - block[0] % 64)
+            while i < len(content) and content[i] < block_start + 64:
+                block.append(content[i])
+                i += 1
+            redundancy_start = block_start // 8
+            while j < len(redundancy) and redundancy[j] < redundancy_start + 8:
+                block.append(redundancy[j])
+                j += 1
+            if config['protection'] == 'secded':
+                if len(block) > 1:
+                    for ind in block:
+                        result.append(ind)
+            if config['protection'] == 'chipkill':
+                if len(set(ind % 8 for ind in block)) > 1:
+                    for ind in block:
+                        result.append(ind)
+        return set(ind for ind in result if ind < original_size)
+    else:
+        return bit_indices_to_flip
+
+
 def inject_memory_fault(model, config):
     rnd = numpy.random.RandomState(config['injection'])
 
@@ -22,6 +59,11 @@ def inject_memory_fault(model, config):
     if config['quantization']:
         bit_width = 8
     size = sum(map(lambda p: p.shape[0] * bit_width, parameters))
+    original_size = size
+
+    if config['protection'] in ('secded', 'chipkill'):
+        size = size * 9 // 8
+    
     bit_indices_to_flip = set()
     granularity = 1
     pages = size // _4KB
@@ -105,7 +147,7 @@ def inject_memory_fault(model, config):
 
         if config['flips'] // 1 == config['flips']:  # if is integer
             parameter_index = \
-                rnd.choice(range(len(parameters)), 1, p=[p.nelement() * bit_width / size for p in parameters])[0]
+                rnd.choice(range(len(parameters)), 1, p=[p.nelement() * bit_width / original_size for p in parameters])[0]
             start = 0
             for i in range(parameter_index):
                 start += parameters[i].nelement() * bit_width
@@ -119,6 +161,10 @@ def inject_memory_fault(model, config):
             while len(bit_indices_to_flip) < count:
                 bit_indices_to_flip.add(rnd.randint(0, size - 1))
 
+    print('Injecting', len(bit_indices_to_flip), 'faults at granularity {}'.format(granularity))
+
+    bit_indices_to_flip = apply_ecc(bit_indices_to_flip, size, config)
+
     with torch.no_grad():
         flip_bits(bit_indices_to_flip, bit_width, config, modules, parameters, granularity, rnd)
 
@@ -126,7 +172,6 @@ def inject_memory_fault(model, config):
 
 
 def flip_bits(bit_indices_to_flip, bit_width, config, modules, parameters, granularity, rnd):
-    print('Injecting', len(bit_indices_to_flip), 'faults at granularity {}'.format(granularity))
     if granularity == 1 or config['quantization']:
         pointer = iter(parameters)
         module_pointer = iter(modules)
@@ -254,16 +299,32 @@ def visualize_conv2d_corruption(module: torch.nn.Conv2d, bit_indices):
 
 if __name__ == '__main__':
     module = torch.nn.Conv2d(128, 64, (5, 5))
-    indices, _ = inject_memory_fault(module, {'quantization': False, 'injection': 0, 'flips': 16})
-    # visualize_conv2d_corruption(module, indices)
-    assert len(indices) == 16
-    indices, _ = inject_memory_fault(module, {'quantization': False, 'injection': 0, 'flips': 0})
-    # visualize_conv2d_corruption(module, indices)
-    assert len(indices) == 0
-    indices, _ = inject_memory_fault(module, {'quantization': False, 'injection': 0, 'flips': PROBABILITIES[0]})
+    indices, _ = inject_memory_fault(module, {'quantization': False, 'protection': 'chipkill', 'injection': 0, 'flips': 0.001})
     # visualize_conv2d_corruption(module, indices)
     assert len(indices) > 0
-    indices, _ = inject_memory_fault(module, {'quantization': False, 'injection': 0, 'flips': 'rowhammer'})
+    indices = set()
+    injection_config = {'quantization': False, 'protection': 'chipkill', 'injection': 0, 'flips': PROBABILITIES[0]}
+    while not indices:
+        indices, _ = inject_memory_fault(module, injection_config)
+        injection_config['injection'] += 1
+    # visualize_conv2d_corruption(module, indices)
+    assert len(indices) > 0
+    indices, _ = inject_memory_fault(module, {'quantization': False, 'protection': 'secded', 'injection': 0, 'flips': 0.001})
+    # visualize_conv2d_corruption(module, indices)
+    assert len(indices) > 0
+    indices, _ = inject_memory_fault(module, {'quantization': False, 'protection': 'none', 'injection': 0, 'flips': 16})
+    # visualize_conv2d_corruption(module, indices)
+    assert len(indices) == 16
+    indices, _ = inject_memory_fault(module, {'quantization': False, 'protection': 'secded', 'injection': 0, 'flips': 16})
+    # visualize_conv2d_corruption(module, indices)
+    assert len(indices) == 0
+    indices, _ = inject_memory_fault(module, {'quantization': False, 'protection': 'none', 'injection': 0, 'flips': 0})
+    # visualize_conv2d_corruption(module, indices)
+    assert len(indices) == 0
+    indices, _ = inject_memory_fault(module, {'quantization': False, 'protection': 'none', 'injection': 0, 'flips': PROBABILITIES[0]})
+    # visualize_conv2d_corruption(module, indices)
+    assert len(indices) > 0
+    indices, _ = inject_memory_fault(module, {'quantization': False, 'protection': 'none', 'injection': 0, 'flips': 'rowhammer'})
     # visualize_conv2d_corruption(module, indices)
     indices = sorted(indices)
     corrupted_chunk_indices = set(i // _4KB for i in indices)
@@ -271,22 +332,22 @@ if __name__ == '__main__':
     for i in indices:
         offset = min(abs(i - chunk_index * _4KB) for chunk_index in corrupted_chunk_indices)
         assert offset < _4KB, offset
-    indices, _ = inject_memory_fault(module, {'quantization': False, 'injection': 0, 'flips': 'word'})
+    indices, _ = inject_memory_fault(module, {'quantization': False, 'protection': 'none', 'injection': 0, 'flips': 'word'})
     # visualize_conv2d_corruption(module, indices)
     assert max(indices) - min(indices) < _2B
     for injection in range(5):
-        indices, _ = inject_memory_fault(module, {'quantization': False, 'injection': injection, 'flips': 'row-4'})
-        visualize_conv2d_corruption(module, indices)
+        indices, _ = inject_memory_fault(module, {'quantization': False, 'protection': 'none', 'injection': injection, 'flips': 'row-4'})
+        # visualize_conv2d_corruption(module, indices)
         assert len(set(i // _4KB for i in indices)) == 2 * 4
     for injection in range(5):
-        indices, _ = inject_memory_fault(module, {'quantization': False, 'injection': injection, 'flips': 'column'})
+        indices, _ = inject_memory_fault(module, {'quantization': False, 'protection': 'none', 'injection': injection, 'flips': 'column'})
         # visualize_conv2d_corruption(module, indices)
         assert len(indices) == int(0.06 / 2 * (module.weight.nelement() * 32 // _4KB))
         assert all(i % _2B == 0 for i in indices)
         assert len(set((i // _2B) % (_4KB // _2B) for i in indices)) == 1
-    indices, size = inject_memory_fault(module, {'quantization': False, 'injection': 0, 'flips': 'bank'})
+    indices, size = inject_memory_fault(module, {'quantization': False, 'protection': 'none', 'injection': 0, 'flips': 'bank'})
     # visualize_conv2d_corruption(module, indices)
     assert len(set(i % (64 * _2B) for i in indices)) == 1
-    indices, size = inject_memory_fault(module, {'quantization': False, 'injection': 0, 'flips': 'chip'})
+    indices, size = inject_memory_fault(module, {'quantization': False, 'protection': 'none', 'injection': 0, 'flips': 'chip'})
     # visualize_conv2d_corruption(module, indices)
     assert len(set(i % (8 * _2B) for i in indices)) == 1

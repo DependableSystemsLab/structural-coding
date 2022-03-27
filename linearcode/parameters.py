@@ -35,7 +35,7 @@ DOMAIN = {
               # 'chip',
               # 'flr',
               'rowhammer'),
-    'protection': ('none', 'clipper', 'ranger', 'sc', 'radar', 'milr', 'flr_mr', 'tmr', 'opt'),
+    'protection': ('none', 'clipper', 'ranger', 'sc', 'radar', 'milr', 'flr_mr', 'tmr', 'opt', 'secded', 'chipkill'),
 }
 
 # don't use short circuit execution here
@@ -117,6 +117,18 @@ SHARDS_CONSTRAINTS = {
         lambda c: c['flips'] in PROBABILITIES + (0, ),
         # only baseline
         lambda c: c['protection'] in ('opt', 'none'),
+        lambda c: not c['quantization']
+    ),
+    'ecc': (
+        lambda c: c['dataset'] == 'imagenet_ds_128',
+        lambda c: c['sampler'] == 'none',
+        lambda c: c['model'] not in ('vgg19', 'e2e'),
+        # ensure baseline execution
+        lambda c: any((c['flips'] != 0, all((c['injection'] == 0, c['protection'] == 'none')))),
+        lambda c: any((c['protection'] != 'none', all((c['injection'] == 0, c['flips'] == 0)))),
+        lambda c: c['flips'] in PROBABILITIES + (0, ),
+        # only baseline
+        lambda c: c['protection'] in ('secded', 'chipkill'),
         lambda c: not c['quantization']
     ),
 }

@@ -123,6 +123,8 @@ def apply_ranger(model, config):
 PROTECTIONS = {
     'before_quantization': {
         'radar': lambda model, config: model,
+        'secded': lambda model, config: model,
+        'chipkill': lambda model, config: model,
         'sc': normalize_model,
         'opt': normalize_model,
         # 'sc': lambda model, config: model,
@@ -134,6 +136,8 @@ PROTECTIONS = {
     'after_quantization': {
         'radar': apply_radar,
         'sc': apply_sc,
+        'secded': lambda model, config: model,
+        'chipkill': lambda model, config: model,
         'opt': apply_opt_sc,
         'clipper': lambda model, config: model,
         'ranger': lambda model, config: model,
