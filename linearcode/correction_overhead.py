@@ -1,4 +1,6 @@
 # sudo sh -c 'echo -1 >/proc/sys/kernel/perf_event_paranoid'
+# sudo sh -c 'echo 3 > /proc/sys/vm/drop_caches'
+
 from time import time
 
 import torch
@@ -80,7 +82,6 @@ for protection in (
                     now = time()
                     model = model_class(pretrained=True)
                     load_time = time() - now
-                    print(load_time)
                     model = model
                     image = image
 
@@ -88,8 +89,11 @@ for protection in (
                     baseline_flops = measure(image, model)
                     inference_time = time() - now
                     sc_normalized_model = PROTECTIONS['before_quantization'][protection](model, None)
+                    normalized_time = measure_time(image, sc_normalized_model)
                     sc_detection_model = PROTECTIONS['after_quantization'][protection](sc_normalized_model, {'flips': 1})
+                    now = time()
                     sc_detection_flops = measure(image, sc_detection_model)
+                    detection_time = time() - now
 
                     print(model_name,
                           100 * (sc_detection_flops / baseline_flops - 1), file=detection_file)
@@ -115,7 +119,8 @@ for protection in (
 
                         now = time()
                         sc_correction_flops = measure(image, sc_correction_model)
-                        print(load_time, inference_time, time() - now)
+                        correction_time = time() - now
+                        print(model_name, load_time, inference_time, detection_time, normalized_time, correction_time)
 
                         print(k,
                               100 * (sc_correction_flops / baseline_flops - 1), file=correction_file)
