@@ -136,6 +136,7 @@ PROTECTIONS = {
     'after_quantization': {
         'radar': apply_radar,
         'sc': apply_sc,
+        # 'sc': lambda model, config: model,
         'secded': lambda model, config: model,
         'chipkill': lambda model, config: model,
         'opt': apply_opt_sc,

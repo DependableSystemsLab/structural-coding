@@ -20,6 +20,7 @@ from storage import load, load_pickle, get_storage_filename
 def draw_sdc(partial=True):
     return draw_metric(partial, sdc)
 
+
 def draw_metric(partial=True, metric_function=sdc):
     baselines = {}
     _, baselines['resnet50'], rands = load_pickle('nonrecurring_resnet50')[:3]
@@ -691,7 +692,20 @@ def optimal_protection():
         print(config, sdc(baseline, data, over_approximate=False))
 
 
+def ecc_protection():
+    for config in query_configs(SHARDS_CONSTRAINTS['ecc'] + (lambda c: c['injection'] == 0 and c['protection'] in ('chipkill', 'secded'), )):
+        data = []
+        for e in load(config, {**DEFAULTS, 'injection': 0}):
+            data.extend(e)
+        baseline_config = copy(config)
+        baseline_config['protection'] = 'none'
+        baseline_config['flips'] = 0
+        baseline = load(baseline_config, {**DEFAULTS, 'injection': 0})[0]
+        print(config, sdc(baseline, data, over_approximate=False))
+
+
 ANALYSIS_ARRAY = (
+    ecc_protection,
     optimal_protection,
 )
 
