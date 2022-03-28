@@ -48,10 +48,10 @@ SHARDS_CONSTRAINTS = {
         )),
         lambda c: c['sampler'] in ('none', 'tiny'),
         # ensure baseline execution
-        lambda c: any((c['flips'] != 0, all((c['injection'] == 0, c['protection'] == 'none')))),
+        lambda c: any((c['flips'] != 0, c['injection'] == 0)),
         # only baseline
         lambda c: isinstance(c['flips'], str) or isinstance(c['flips'], float) or c['flips'] == 0,
-        lambda c: c['protection'] in ('sc', 'none', 'clipper', 'tmr', 'radar', 'milr', 'ranger'),
+        lambda c: c['protection'] in ('sc', 'none', 'clipper', 'tmr', 'radar', 'milr', 'ranger', 'opt', 'secded', 'chipkill'),
         lambda c: c['model'] not in ('vgg19',),
         lambda c: not c['quantization'],
     ),
@@ -116,7 +116,7 @@ SHARDS_CONSTRAINTS = {
         lambda c: any((c['protection'] != 'none', all((c['injection'] == 0, c['flips'] == 0)))),
         lambda c: c['flips'] in PROBABILITIES + (0, ),
         # only baseline
-        lambda c: c['protection'] in ('opt', 'none'),
+        lambda c: c['protection'] in ('opt', ),
         lambda c: not c['quantization']
     ),
     'ecc': (

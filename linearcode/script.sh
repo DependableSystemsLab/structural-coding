@@ -7,7 +7,7 @@ module load singularity
 mkdir -p ../shome
 
 export IMAGENET_ROOT=/scratch/aasgarik/data/imagenet/
-export SHARD=ecc
+export SHARD=optimal
 
 INTERNAL_SIZE=40
 for i in $( eval echo {1..$INTERNAL_SIZE} ); do

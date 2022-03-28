@@ -16,7 +16,7 @@ print()
 
 optimal_points = {}
 
-for protection_probability in (0.99, ):
+for protection_probability in (0.90, ):
 
     baseline_overhead = None
 
@@ -44,13 +44,13 @@ for protection_probability in (0.99, ):
                     channel_does_not_corrupt = (1 - ber) ** within_channel_bits
                     channel_corrupts = 1 - channel_does_not_corrupt
                     k = 1
-                    n = k + min(256, channels)
+                    n = k + 256
                     while binom.cdf(k, n, channel_corrupts) < protection_probability:
                         k += 1
                         n += 1
                 else:
                     k = 32
-                    n = 32 + 256
+                    n = k + 256
 
                 optimal_points[tuple(module.weight.shape) + (ber, )] = (n, k)
                 scheme_percentage = k * math.ceil(channels / n) / channels
