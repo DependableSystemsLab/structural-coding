@@ -164,7 +164,7 @@ def inject_memory_fault(model, config):
     print('Injecting', len(bit_indices_to_flip), 'faults at granularity {}'.format(granularity))
 
     bit_indices_to_flip = apply_ecc(bit_indices_to_flip, size, config)
-
+    # print(bit_indices_to_flip)
     with torch.no_grad():
         flip_bits(bit_indices_to_flip, bit_width, config, modules, parameters, granularity, rnd)
 
