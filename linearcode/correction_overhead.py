@@ -48,82 +48,92 @@ measure = count_flops
 memory_filename = get_storage_filename({'fig': 'memory_overhead'},
                                           extension='.tex', storage='../thesis/data/')
 
-with open(memory_filename, mode='w') as memory_file:
-    for model_name, model_class in MODEL_CLASSES:
-        model = model_class()
-        sc_normalized_model = PROTECTIONS['before_quantization']['sc'](model, None)
-        sc_correction_model = PROTECTIONS['after_quantization']['sc'](sc_normalized_model, {'flips': 32})
-        correction_size = sum(p.nelement() for p in sc_correction_model.parameters())
-        model_size = sum(p.nelement() for p in model.parameters())
-        print(model_name, 100 * (correction_size / model_size - 1), file=memory_file)
 
-for protection in (
-        'sc',
-        # 'milr',
-        # 'tmr'
-):
-    detection_filename = get_storage_filename({'fig': 'detection_flops_overhead', 'protection': protection},
-                                              extension='.tex', storage='../thesis/data/')
+def corrupt_model(sc_correction_model, n, k):
+    params = sorted(list(p for p in sc_correction_model.parameters() if len(p.shape) > 1),
+                    key=lambda p: p.flatten().shape[0] / p.shape[0], reverse=True)
+    p_iterator = iter(params)
+    parameter = next(p_iterator)
+    offset = 0
 
-    with open(detection_filename, mode='w') as detection_file:
+    with torch.no_grad():
+        for i in range(k):
+            while (i - offset) * (n + k) > parameter.shape[0]:
+                parameter = next(p_iterator)
+                offset = i
+            parameter[(i - offset) * (n + k) % parameter.shape[0]] = 1e16
+
+
+if __name__ == '__main__':
+    with open(memory_filename, mode='w') as memory_file:
         for model_name, model_class in MODEL_CLASSES:
-            # if model_name != 'shufflenet':
-            #     continue
-            correction_filename = get_storage_filename({'fig': 'correction_flops_overhead',
-                                                        'model': model_name},
-                                                       extension='.tex', storage='../thesis/data/')
-            with open(correction_filename, mode='w') as correction_file:
-                with torch.no_grad():
+            model = model_class()
+            sc_normalized_model = PROTECTIONS['before_quantization']['sc'](model, None)
+            sc_correction_model = PROTECTIONS['after_quantization']['sc'](sc_normalized_model, {'flips': 32})
+            correction_size = sum(p.nelement() for p in sc_correction_model.parameters())
+            model_size = sum(p.nelement() for p in model.parameters())
+            print(model_name, 100 * (correction_size / model_size - 1), file=memory_file)
 
-                    if model_name == 'e2e':
-                        image = e2e_image
-                    else:
-                        image = imagenet_image
-                    now = time()
-                    model = model_class(pretrained=True)
-                    load_time = time() - now
-                    model = model
-                    image = image
 
-                    now = time()
-                    baseline_flops = measure(image, model)
-                    inference_time = time() - now
-                    sc_normalized_model = PROTECTIONS['before_quantization'][protection](model, None)
-                    normalized_time = measure_time(image, sc_normalized_model)
-                    sc_detection_model = PROTECTIONS['after_quantization'][protection](sc_normalized_model, {'flips': 1})
-                    now = time()
-                    sc_detection_flops = measure(image, sc_detection_model)
-                    detection_time = time() - now
 
-                    print(model_name,
-                          100 * (sc_detection_flops / baseline_flops - 1), file=detection_file)
-                    detection_file.flush()
 
-                    for k in (1, 2, 4, 8):
+    for protection in (
+            'sc',
+            # 'milr',
+            # 'tmr'
+    ):
+        detection_filename = get_storage_filename({'fig': 'detection_flops_overhead', 'protection': protection},
+                                                  extension='.tex', storage='../thesis/data/')
 
-                        sc_correction_model = PROTECTIONS['after_quantization']['sc'](sc_normalized_model, {'flips': 32})
+        with open(detection_filename, mode='w') as detection_file:
+            for model_name, model_class in MODEL_CLASSES:
+                # if model_name != 'shufflenet':
+                #     continue
+                correction_filename = get_storage_filename({'fig': 'correction_flops_overhead',
+                                                            'model': model_name},
+                                                           extension='.tex', storage='../thesis/data/')
+                with open(correction_filename, mode='w') as correction_file:
+                    with torch.no_grad():
 
-                        # sc_normalization_flops = flops(image, sc_normalized_model)
-
-                        params = sorted(list(p for p in sc_correction_model.parameters() if len(p.shape) > 1),
-                                        key=lambda p: p.flatten().shape[0] / p.shape[0], reverse=True)
-
-                        p_iterator = iter(params)
-                        parameter = next(p_iterator)
-                        offset = 0
-                        for i in range(k):
-                            while (i - offset) * (n + k) > parameter.shape[0]:
-                                parameter = next(p_iterator)
-                                offset = i
-                            parameter[(i - offset) * (n + k) % parameter.shape[0]] = 1e16
+                        if model_name == 'e2e':
+                            image = e2e_image
+                        else:
+                            image = imagenet_image
+                        now = time()
+                        model = model_class(pretrained=True)
+                        load_time = time() - now
+                        model = model
+                        image = image
 
                         now = time()
-                        sc_correction_flops = measure(image, sc_correction_model)
-                        correction_time = time() - now
-                        print(model_name, load_time, inference_time, detection_time, normalized_time, correction_time)
+                        baseline_flops = measure(image, model)
+                        inference_time = time() - now
+                        sc_normalized_model = PROTECTIONS['before_quantization'][protection](model, None)
+                        normalized_time = measure_time(image, sc_normalized_model)
+                        sc_detection_model = PROTECTIONS['after_quantization'][protection](sc_normalized_model, {'flips': 1})
+                        now = time()
+                        sc_detection_flops = measure(image, sc_detection_model)
+                        detection_time = time() - now
 
-                        print(k,
-                              100 * (sc_correction_flops / baseline_flops - 1), file=correction_file)
-                        correction_file.flush()
+                        print(model_name,
+                              100 * (sc_detection_flops / baseline_flops - 1), file=detection_file)
+                        detection_file.flush()
 
-                print()
+                        for k in (1, 2, 4, 8):
+
+                            sc_correction_model = PROTECTIONS['after_quantization']['sc'](sc_normalized_model, {'flips': 32})
+
+                            # sc_normalization_flops = flops(image, sc_normalized_model)
+
+                            corrupt_model(sc_correction_model, n, k)
+
+                            now = time()
+                            sc_correction_flops = measure(image, sc_correction_model)
+                            correction_time = time() - now
+                            print(model_name, load_time, inference_time, detection_time, normalized_time, correction_time)
+
+                            print(k,
+                                  100 * (sc_correction_flops / baseline_flops - 1), file=correction_file)
+                            correction_file.flush()
+
+                    print()
