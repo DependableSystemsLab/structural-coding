@@ -1,4 +1,5 @@
-*
-!.gitignore
-!.dockerignore
-!random20classes_FI
+sullychen
+imagenet
+driving_dataset.zip
+__MACOSX
+

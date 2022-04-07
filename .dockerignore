@@ -1,6 +1,7 @@
 data/**
 !data/.gitignore
 !data/random20classes_FI
+!data/imagenet_ds_128
 venv
 .git
 common/comma_fast_0.pth
