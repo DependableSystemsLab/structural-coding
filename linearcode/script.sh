@@ -6,7 +6,6 @@
 module load singularity
 mkdir -p ../shome
 
-export IMAGENET_ROOT=/scratch/aasgarik/data/imagenet/
 export SHARD=optimal
 
 INTERNAL_SIZE=40
