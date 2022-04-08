@@ -4,6 +4,8 @@ from functools import reduce
 
 import torch
 
+from settings import BATCH_SIZE
+
 
 def sdc(baseline, target, over_approximate=False):
     baseline_top1, label = merge(baseline)
@@ -20,8 +22,10 @@ def sdc(baseline, target, over_approximate=False):
     #                                          784, 789, 806, 808, 828, 851, 872, 877, 885, 907, 912, 915, 928, 929, 934,
     #                                          948, 966, 998]]
     target_top1 = None
+    injections = []
     for e in target:
         top1 = e['top5'].T[0]
+        injections.append(e['config']['injection'])
         if target_top1 is None:
             target_top1 = top1
         else:
@@ -35,6 +39,12 @@ def sdc(baseline, target, over_approximate=False):
     correct = label == target_top1
     base_correct = label == baseline_top1
     corrupted = torch.logical_and(torch.logical_not(correct), base_correct)
+    # Uncomment for getting injection ids of SDCs
+    # for image_id, s in enumerate(corrupted):
+    #     if s:
+    #         print(injections[image_id // BATCH_SIZE], end=' ')
+    # print()
+
     sdc = (torch.sum(corrupted) + (1 if over_approximate else 0)) / torch.sum(base_correct)
     z = 1.96  # 95% confidence interval
     error = z * math.sqrt(sdc * (1 - sdc) / n)

@@ -1,4 +1,5 @@
 import math
+import time
 from pprint import pprint
 
 from common.models import MODEL_CLASSES
@@ -15,6 +16,8 @@ for ber in ('one-size-fits-all', ) + PROBABILITIES:
 print()
 
 optimal_points = {}
+
+start_time = time.time()
 
 for protection_probability in (0.90, ):
 
@@ -68,3 +71,4 @@ for protection_probability in (0.90, ):
         print()
 
 pprint(optimal_points)
+print("Finding optimal points took ", time.time() - start_time)
