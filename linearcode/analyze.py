@@ -14,6 +14,7 @@ from linearcode.fault import inject_memory_fault, get_target_modules
 from linearcode.models import get_model
 from linearcode.parameters import SLURM_ARRAY, DEFAULTS, query_configs, DOMAIN, SHARDS_CONSTRAINTS
 from linearcode.protection import PROTECTIONS
+from settings import SHARD
 from storage import load, load_pickle, get_storage_filename
 
 
@@ -433,21 +434,14 @@ def demonstrate_quantization_accuracy():
 
 
 def sdc_protection_scales_with_granularity():
-    base_query = (
-        lambda c: c['dataset'] == 'imagenet_ds_128',
-        lambda c: c['sampler'] == 'none',
-        lambda c: not c['quantization'],
-        lambda c: isinstance(c['flips'], str) or c['flips'] == 0,
-        lambda c: not c['model'] in ('e2e', 'vgg19'),
-        # lambda c: c['model'] in ("alexnet", 'mobilenet'),
-    )
+    base_query = SHARDS_CONSTRAINTS[SHARD]
     baseline_configs = query_configs(base_query + (
         lambda c: all((c['flips'] == 0, c['injection'] == 0, c['protection'] == 'none')),
     ))
 
     for flips in DOMAIN['flips']:
-        # if flips not in ("row", "row-4", "rowhammer"):
-        #     continue
+        if flips in ("row-4", "rowhammer"):
+            continue
         if not isinstance(flips, str):
             continue
         # if flips in ('bank', 'chip'):
@@ -457,12 +451,12 @@ def sdc_protection_scales_with_granularity():
         print(flips)
         for protection in (
             'sc',
-            # 'clipper',
+            'clipper',
             'none',
             # 'tmr',
-            # 'radar',
-            # 'milr',
-            # 'ranger',
+            'radar',
+            'milr',
+            'ranger',
         ):
             if not isinstance(protection, str):
                 continue
@@ -581,14 +575,7 @@ def rewhammer_recovery():
 
 
 def sdc_protection_scales_with_faults():
-    base_query = (
-        lambda c: c['dataset'] == 'imagenet_ds_128',
-        lambda c: c['sampler'] == 'none',
-        lambda c: not c['quantization'],
-        lambda c: isinstance(c['flips'], int),
-        lambda c: not c['model'] in ('e2e', 'vgg19'),
-        # lambda c: c['model'] in ("alexnet", 'mobilenet'),
-    )
+    base_query = SHARDS_CONSTRAINTS[SHARD]
     baseline_configs = query_configs(base_query + (
         lambda c: all((c['flips'] == 0, c['injection'] == 0, c['protection'] == 'none')),
     ))
@@ -600,13 +587,10 @@ def sdc_protection_scales_with_faults():
             'sc',
             'clipper',
             'none',
-            'tmr',
             'radar',
             'milr',
             'ranger',
         ):
-            if not isinstance(protection, str):
-                continue
             filename = get_storage_filename({'fig': 'sdc_protection_scales_with_faults',
                                              'model': baseline_config['model'],
                                              'protection': protection},
@@ -705,8 +689,8 @@ def ecc_protection():
 
 
 ANALYSIS_ARRAY = (
-    ecc_protection,
-    optimal_protection,
+    sdc_protection_scales_with_granularity,
+    sdc_protection_scales_with_ber,
 )
 
 SLURM_ARRAY_TASK_ID = int(os.environ.get('SLURM_ARRAY_TASK_ID', '0'))

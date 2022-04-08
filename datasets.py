@@ -134,7 +134,11 @@ def get_dataset(config):
         absolute_image_id = [i for i in range(50000) if i not in sampler][image_id]
         return get_full_image_net([absolute_image_id], 'val')
     if config['dataset'] == 'imagenet_ds_128':
-        sampler = sorted(rnd.choice(range(50000), 10000, replace=False)[:128])
+        if config['sampler'] == 'tiny':
+            whole_size = BATCH_SIZE
+        else:
+            whole_size = 128
+        sampler = sorted(rnd.choice(range(50000), 10000, replace=False)[:whole_size])
         return get_full_image_net(sampler, 'val')
     if config['dataset'] == 'imagenet':
         sampler = None

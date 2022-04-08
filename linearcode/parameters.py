@@ -3,11 +3,11 @@ import pickle
 from copy import deepcopy
 from itertools import product
 
-from settings import PROBABILITIES, SHARD
+from settings import PROBABILITIES, SHARD, INJECTIONS_RANGE
 from storage import get_storage_filename
 
 DOMAIN = {
-    'injection': range(400),
+    'injection': range(*INJECTIONS_RANGE),
     # 'injection': range(1),
     'model': ('e2e', 'resnet50', 'alexnet', 'squeezenet', 'vgg19', 'mobilenet', 'googlenet', 'shufflenet'),
     'quantization': (True, False),
@@ -39,6 +39,21 @@ DOMAIN = {
 }
 
 # don't use short circuit execution here
+artifact_description_base = (
+    lambda c: c['dataset'] == 'imagenet_ds_128',
+    lambda c: c['sampler'] in ('none', 'tiny'),
+    # ensure baseline execution
+    lambda c: any((c['flips'] != 0, c['injection'] == 0)),
+    # only baseline
+    lambda c: isinstance(c['flips'], str) or isinstance(c['flips'], float) or c['flips'] == 0,
+    lambda c: c['protection'] in ('sc', 'none', 'clipper', 'radar', 'milr', 'ranger', 'opt', 'chipkill'),
+    lambda c: c['model'] not in ('vgg19', 'e2e'),
+    lambda c: not c['quantization'],
+    lambda c: c['flips'] not in ('rowhammer', 'row-4'),
+    # limit chipkill and opt
+    lambda c: any((isinstance(c['flips'], float), c['protection'] != 'opt')),
+    lambda c: any((c['flips'] == PROBABILITIES[0], c['protection'] != 'chipkill')),
+)
 SHARDS_CONSTRAINTS = {
     'default': (
         lambda c: c['dataset'] in ('imagenet_ds_128', 'driving_dataset_test', 'imagenet'),
@@ -131,6 +146,8 @@ SHARDS_CONSTRAINTS = {
         lambda c: c['protection'] in ('secded', 'chipkill'),
         lambda c: not c['quantization']
     ),
+    'ad': artifact_description_base + (lambda c: c['sampler'] == 'none',),
+    'tinyad': artifact_description_base + (lambda c: c['sampler'] == 'tiny',),
 }
 
 CONSTRAINTS = SHARDS_CONSTRAINTS[SHARD]
