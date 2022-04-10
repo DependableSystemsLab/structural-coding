@@ -217,7 +217,8 @@ if not SLURM_ARRAY:
     print("Ask for help from the authors, or stick to the sample commands!")
     exit(1)
 
-CONFIG = SLURM_ARRAY[int(os.environ.get('INTERNAL_SLURM_ARRAY_TASK_ID', '0'))]
+INTERNAL_SLURM_ARRAY_TASK_ID = int(os.environ.get('INTERNAL_SLURM_ARRAY_TASK_ID', '0'))
+CONFIG = SLURM_ARRAY[INTERNAL_SLURM_ARRAY_TASK_ID]
 
 if __name__ == '__main__':
     file_names = set(get_storage_filename(i, {**DEFAULTS, 'injection': i['injection']}) for i in SLURM_ARRAY)

@@ -12,9 +12,10 @@ from analysis import sdc, merge
 from common.models import MODEL_CLASSES
 from linearcode.fault import inject_memory_fault, get_target_modules
 from linearcode.models import get_model
-from linearcode.parameters import SLURM_ARRAY, DEFAULTS, query_configs, DOMAIN, SHARDS_CONSTRAINTS
+from linearcode.parameters import SLURM_ARRAY, DEFAULTS, query_configs, DOMAIN, SHARDS_CONSTRAINTS, \
+    INTERNAL_SLURM_ARRAY_TASK_ID
 from linearcode.protection import PROTECTIONS
-from settings import SHARD
+from settings import SHARD, PROBABILITIES
 from storage import load, load_pickle, get_storage_filename
 
 
@@ -473,12 +474,14 @@ def sdc_protection_scales_with_granularity():
                     config['flips'] = flips
                     config['protection'] = protection
                     data = load(config, {**DEFAULTS, 'injection': config['injection']})
-                    if data:
-                        concat_data = []
-                        for e in data:
-                            concat_data.extend(e)
-                        print(baseline_config['model'], *sdc(baseline, concat_data, over_approximate=protection=='sc'), file=data_file)
-                        print(baseline_config['model'], *sdc(baseline, concat_data, over_approximate=protection=='sc'))
+                    concat_data = []
+                    for e in data:
+                        concat_data.extend(e)
+
+                    over_approximate = protection == 'sc' and len(data) > 300
+                    print(baseline_config['model'], *sdc(baseline, concat_data, over_approximate=over_approximate),
+                          file=data_file)
+                    print(baseline_config['model'], *sdc(baseline, concat_data, over_approximate=over_approximate))
 
 
 def regression_recovery():
@@ -611,13 +614,7 @@ def sdc_protection_scales_with_faults():
 
 
 def sdc_protection_scales_with_ber():
-    base_query = (
-        lambda c: c['dataset'] == 'imagenet_ds_128',
-        lambda c: c['sampler'] == 'none',
-        lambda c: not c['quantization'],
-        lambda c: not c['model'] in ('e2e', 'vgg19'),
-        # lambda c: c['model'] in ("alexnet", 'mobilenet'),
-    )
+    base_query = SHARDS_CONSTRAINTS[SHARD]
     baseline_configs = query_configs(base_query + (
         lambda c: all((c['flips'] == 0, c['injection'] == 0, c['protection'] == 'none')),
     ))
@@ -629,11 +626,13 @@ def sdc_protection_scales_with_ber():
             'sc',
             'clipper',
             'none',
-            'tmr',
             'radar',
             'milr',
             'ranger',
+            'chipkill',
         ):
+            if protection == 'chipkill' and flips != PROBABILITIES[0]:
+                continue
             filename = get_storage_filename({'fig': 'sdc_protection_scales_with_ber',
                                              'flips': '10e{}'.format(int(round(math.log(float(flips), 10)))),
                                              'protection': protection},
@@ -646,11 +645,11 @@ def sdc_protection_scales_with_ber():
                     config['flips'] = flips
                     config['protection'] = protection
                     data = load(config, {**DEFAULTS, 'injection': config['injection']})
-                    if data:
-                        concat_data = []
-                        for e in data:
-                            concat_data.extend(e)
-                        print(baseline_config['model'], *sdc(baseline, concat_data, over_approximate=protection=='sc'), file=data_file)
+                    concat_data = []
+                    for e in data:
+                        concat_data.extend(e)
+                    over_approximate = protection == 'sc' and len(data) > 300
+                    print(baseline_config['model'], *sdc(baseline, concat_data, over_approximate=over_approximate), file=data_file)
 
 
 def parameter_pages():
@@ -693,7 +692,6 @@ ANALYSIS_ARRAY = (
     sdc_protection_scales_with_ber,
 )
 
-SLURM_ARRAY_TASK_ID = int(os.environ.get('SLURM_ARRAY_TASK_ID', '0'))
 
 if __name__ == '__main__':
-    ANALYSIS_ARRAY[SLURM_ARRAY_TASK_ID]()
+    ANALYSIS_ARRAY[INTERNAL_SLURM_ARRAY_TASK_ID]()
