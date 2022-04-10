@@ -34,7 +34,8 @@ def apply_opt_sc(model, config):
         'k': 'opt',
         'threshold': config.get('threshold', 0.00),
         'n': config.get('n', 256),
-        'ber': config['flips']
+        'ber': config['flips'],
+        'model': config['model'],
     })
     return model
 

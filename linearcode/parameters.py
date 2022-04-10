@@ -148,6 +148,11 @@ SHARDS_CONSTRAINTS = {
     ),
     'ad': artifact_description_base + (lambda c: c['sampler'] == 'none',),
     'tinyad': artifact_description_base + (lambda c: c['sampler'] == 'tiny',),
+    'resnet50coverage': artifact_description_base + (
+        lambda c: c['sampler'] == 'none',
+        lambda c: c['model'] == 'resnet50',
+        lambda c: (c['flips'], c['protection']) in ((0, 'none'), (PROBABILITIES[0], 'opt')),
+    ),
 }
 
 CONSTRAINTS = SHARDS_CONSTRAINTS[SHARD]

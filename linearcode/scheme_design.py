@@ -8,8 +8,6 @@ from settings import PROBABILITIES
 from scipy.stats import binom
 from protection import normalize_model
 
-from utils import biggest_divisor_smaller_than
-
 print('BER', end=' ')
 for ber in ('one-size-fits-all', ) + PROBABILITIES:
     print(ber, end=' ')
@@ -19,11 +17,19 @@ optimal_points = {}
 
 start_time = time.time()
 
-for protection_probability in (0.90, ):
+for desired_protection_probability in (0.90, ):
 
     baseline_overhead = None
 
     for model_name, model_class in MODEL_CLASSES:
+        if model_name == 'vgg19':
+            continue
+
+        inter_layer_binding = 1
+        if model_name == 'resnet50':
+            inter_layer_binding = 3
+
+        desired_protection_probability = 1 - ((1 - desired_protection_probability) / inter_layer_binding)
 
         print(model_name, end=' ')
         for ber in ('one-size-fits-all', ) + PROBABILITIES:
@@ -42,20 +48,21 @@ for protection_probability in (0.90, ):
                 original_in_features = module.weight.shape[1]
                 in_features = original_in_features
                 within_channel_bits = module.weight.nelement() // channels // (original_in_features // in_features) * module.weight.element_size() * 8
-
                 if ber != 'one-size-fits-all':
                     channel_does_not_corrupt = (1 - ber) ** within_channel_bits
                     channel_corrupts = 1 - channel_does_not_corrupt
                     k = 1
                     n = k + 256
-                    while binom.cdf(k, n, channel_corrupts) < protection_probability:
+                    protection_probability = binom.cdf(k, n, channel_corrupts)
+                    while protection_probability < desired_protection_probability:
                         k += 1
                         n += 1
+                        protection_probability = binom.cdf(k, n, channel_corrupts)
                 else:
                     k = 32
                     n = k + 256
 
-                optimal_points[tuple(module.weight.shape) + (ber, )] = (n, k)
+                optimal_points[tuple(module.weight.shape) + (ber, model_name)] = (n, k)
                 scheme_percentage = k * math.ceil(channels / n) / channels
                 weighted_sum += k * math.ceil(channels / n) * within_channel_bits
                 sum_of_weights += channels * within_channel_bits
