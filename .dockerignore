@@ -7,6 +7,9 @@ venv
 common/comma_fast_0.pth
 common/dave/
 linearcode/results**
+complement/
+pruning/
+ubcthesis/
 results/
 linearcode/nonrecurring*
 sc.sif
