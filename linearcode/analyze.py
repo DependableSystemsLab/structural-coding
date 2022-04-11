@@ -10,6 +10,7 @@ import torch
 
 from analysis import sdc, merge
 from common.models import MODEL_CLASSES
+from injection import BER_OPTIMAL_CONFIGS
 from linearcode.fault import inject_memory_fault, get_target_modules, get_flattened_weights
 from linearcode.models import get_model
 from linearcode.parameters import SLURM_ARRAY, DEFAULTS, query_configs, DOMAIN, SHARDS_CONSTRAINTS, \
@@ -750,10 +751,26 @@ def ecc_protection():
                                                                extension='.tex', storage='../thesis/data/'), mode='w'))
 
 
+def optimal_parameters():
+    filename = get_storage_filename({'tbl': 'optimal_parameters',},
+                                    extension='.tex', storage='../thesis/data/')
+    with open(filename, mode='w') as data_file:
+        for key, value in sorted(BER_OPTIMAL_CONFIGS.items(), key=lambda i: (i[0][-1], i[0][:-2])):
+            shape = key[:-2]
+            ber = key[-2]
+            model = key[-1]
+            if model in ('vgg19', 'e2e') or not isinstance(ber, float):
+                continue
+            k = value[1]
+            n = value[0]
+            print(model, shape, ber, n, k, sep=' & ', end='\\\\\n', file=data_file)
+
+
 ANALYSIS_ARRAY = (
     sdc_protection_scales_with_granularity,
     sdc_protection_scales_with_ber,
     ecc_protection,
+    optimal_parameters,
 )
 
 
