@@ -92,12 +92,17 @@ class FloatField(Field):
 
 class StructuralCode:
 
-    def __init__(self, n, k, threshold=0, double=False, field: Field = None) -> None:
+    def __init__(self, n, k, threshold=0, double=None, field: Field = None) -> None:
         self.n = n
         self.k = k
         self._weights = None
         self.threshold = threshold
         if field is None:
+            if double is None:
+                if torch.get_default_dtype() == torch.float64:
+                    double = True
+                else:
+                    double = False
             if double:
                 self.field = DoubleField()
             else:
