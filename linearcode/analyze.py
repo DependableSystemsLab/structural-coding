@@ -10,11 +10,12 @@ import torch
 
 from analysis import sdc, merge
 from common.models import MODEL_CLASSES
-from linearcode.fault import inject_memory_fault, get_target_modules
+from linearcode.fault import inject_memory_fault, get_target_modules, get_flattened_weights
 from linearcode.models import get_model
 from linearcode.parameters import SLURM_ARRAY, DEFAULTS, query_configs, DOMAIN, SHARDS_CONSTRAINTS, \
     INTERNAL_SLURM_ARRAY_TASK_ID
 from linearcode.protection import PROTECTIONS
+from sc import StructuralCode, ErasureCode
 from settings import SHARD, PROBABILITIES
 from storage import load, load_pickle, get_storage_filename
 
@@ -676,20 +677,83 @@ def optimal_protection():
 
 
 def ecc_protection():
-    for config in query_configs(SHARDS_CONSTRAINTS['ecc'] + (lambda c: c['injection'] == 0 and c['protection'] in ('chipkill', 'secded'), )):
-        data = []
-        for e in load(config, {**DEFAULTS, 'injection': 0}):
-            data.extend(e)
-        baseline_config = copy(config)
-        baseline_config['protection'] = 'none'
-        baseline_config['flips'] = 0
-        baseline = load(baseline_config, {**DEFAULTS, 'injection': 0})[0]
-        print(config, sdc(baseline, data, over_approximate=False))
+    filename = get_storage_filename({'tbl': 'chipkill_sdc_injection_ids',},
+                                    extension='.tex', storage='../thesis/data/')
+    sdc_injection_ids = defaultdict(list)
+    with open(filename, mode='w') as data_file:
+        for config in query_configs(SHARDS_CONSTRAINTS['ecc'] + (
+                lambda c: c['injection'] == 0 and c['protection'] == 'chipkill' and c['flips'] == PROBABILITIES[0],
+        )):
+            data = []
+            for e in load(config, {**DEFAULTS, 'injection': 0}):
+                data.extend(e)
+            baseline_config = copy(config)
+            baseline_config['protection'] = 'none'
+            baseline_config['flips'] = 0
+            baseline = load(baseline_config, {**DEFAULTS, 'injection': 0})[0]
+            sdc(baseline, data, over_approximate=False, sdc_injection_ids=sdc_injection_ids[baseline_config['model']])
+            print(config['model'], ', '.join(map(str, sorted(set(sdc_injection_ids[baseline_config['model']])))),
+                  sep=' & ', end=' \\\\\n', file=data_file)
+
+    model = [model_class for model_name, model_class in MODEL_CLASSES if model_name == 'resnet50'][0](pretrained=True)
+    example_injection_id = sdc_injection_ids['resnet50'][0]
+    positions, size = inject_memory_fault(model, {'injection': example_injection_id,
+                                                  'protection': 'chipkill',
+                                                  'quantization': False,
+                                                  'flips': PROBABILITIES[0]})
+    module_params = get_flattened_weights(model)
+    perturbed = []
+    for position in positions:
+        parameter_index = position // 32
+        for m, weights in module_params:
+            if parameter_index < len(weights):
+                perturbed.append(float(weights[parameter_index]))
+                break
+            else:
+                parameter_index -= len(weights)
+    model = [model_class for model_name, model_class in MODEL_CLASSES if model_name == 'resnet50'][0](pretrained=True)
+    module_params = get_flattened_weights(model)
+    assert len(positions) == 2
+    original = []
+    for position in positions:
+        parameter_index = position // 32
+        for m, weights in module_params:
+            if parameter_index < len(weights):
+                original.append(float(weights[parameter_index]))
+                break
+            else:
+                parameter_index -= len(weights)
+
+    print(example_injection_id, file=open(get_storage_filename({'txt': 'chipkill_example_injection_id', },
+                                                               extension='.tex', storage='../thesis/data/'), mode='w'))
+    print(original[0], file=open(get_storage_filename({'txt': 'chipkill_example_original_1', },
+                                                               extension='.tex', storage='../thesis/data/'), mode='w'))
+    print(original[1], file=open(get_storage_filename({'txt': 'chipkill_example_original_2', },
+                                                               extension='.tex', storage='../thesis/data/'), mode='w'))
+    print(perturbed[0], file=open(get_storage_filename({'txt': 'chipkill_example_perturbed_1', },
+                                                               extension='.tex', storage='../thesis/data/'), mode='w'))
+    print(perturbed[1], file=open(get_storage_filename({'txt': 'chipkill_example_perturbed_2', },
+                                                               extension='.tex', storage='../thesis/data/'), mode='w'))
+    sc = StructuralCode(2, 1)
+    original_tensor = torch.FloatTensor([original[:2]])
+    ec = ErasureCode(2, 1)
+    coded = sc.code(original_tensor, dim=1)
+    checksum = ec.checksum(coded, dim=1)
+    with torch.no_grad():
+        coded[0][0] = perturbed[0]
+        coded[0][1] = perturbed[1]
+    erasure = ec.erasure(coded, checksum, dim=1)
+    corrected = sc.decode(coded, erasure=erasure, dim=1)
+    print(corrected[0][0], file=open(get_storage_filename({'txt': 'chipkill_example_corrected_1', },
+                                                               extension='.tex', storage='../thesis/data/'), mode='w'))
+    print(corrected[0][1], file=open(get_storage_filename({'txt': 'chipkill_example_corrected_2', },
+                                                               extension='.tex', storage='../thesis/data/'), mode='w'))
 
 
 ANALYSIS_ARRAY = (
     sdc_protection_scales_with_granularity,
     sdc_protection_scales_with_ber,
+    ecc_protection,
 )
 
 

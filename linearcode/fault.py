@@ -6,7 +6,7 @@ import torch
 import torch.nn.qat
 
 from injection import bitflip
-from settings import PROBABILITIES
+from settings import PROBABILITIES, PRINT_INJECTION_POSITIONS
 from utils import quantize_tensor, dequantize_tensor
 
 _4KB = 4 * 2 ** 10 * 8
@@ -164,7 +164,8 @@ def inject_memory_fault(model, config):
     print('Injecting', len(bit_indices_to_flip), 'faults at granularity {}'.format(granularity))
 
     bit_indices_to_flip = apply_ecc(bit_indices_to_flip, size, config)
-    # print(bit_indices_to_flip)
+    if PRINT_INJECTION_POSITIONS:
+        print(bit_indices_to_flip)
     with torch.no_grad():
         flip_bits(bit_indices_to_flip, bit_width, config, modules, parameters, granularity, rnd)
 

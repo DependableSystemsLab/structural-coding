@@ -7,20 +7,8 @@ import torch
 from settings import BATCH_SIZE
 
 
-def sdc(baseline, target, over_approximate=False):
+def sdc(baseline, target, over_approximate=False, sdc_injection_ids=None):
     baseline_top1, label = merge(baseline)
-    # baseline_top1 = baseline_top1[[4, 10, 14, 16, 23, 27, 39, 51, 53, 64, 68, 109, 111, 120, 124, 131, 139,
-    #                                          143, 162, 215, 236, 242, 276, 284, 303, 332, 374, 384, 397, 405, 408, 413,
-    #                                          419, 420, 423, 424, 431, 432, 447, 448, 462, 466, 485, 502, 503, 511, 532,
-    #                                          536, 538, 540, 563, 581, 621, 662, 673, 677, 690, 693, 701, 733, 767, 774,
-    #                                          784, 789, 806, 808, 828, 851, 872, 877, 885, 907, 912, 915, 928, 929, 934,
-    #                                          948, 966, 998]]
-    # label = label[[4, 10, 14, 16, 23, 27, 39, 51, 53, 64, 68, 109, 111, 120, 124, 131, 139,
-    #                                          143, 162, 215, 236, 242, 276, 284, 303, 332, 374, 384, 397, 405, 408, 413,
-    #                                          419, 420, 423, 424, 431, 432, 447, 448, 462, 466, 485, 502, 503, 511, 532,
-    #                                          536, 538, 540, 563, 581, 621, 662, 673, 677, 690, 693, 701, 733, 767, 774,
-    #                                          784, 789, 806, 808, 828, 851, 872, 877, 885, 907, 912, 915, 928, 929, 934,
-    #                                          948, 966, 998]]
     target_top1 = None
     injections = []
     for e in target:
@@ -39,11 +27,10 @@ def sdc(baseline, target, over_approximate=False):
     correct = label == target_top1
     base_correct = label == baseline_top1
     corrupted = torch.logical_and(torch.logical_not(correct), base_correct)
-    # Uncomment for getting injection ids of SDCs
-    # for image_id, s in enumerate(corrupted):
-    #     if s:
-    #         print(injections[image_id // BATCH_SIZE], end=' ')
-    # print()
+    if sdc_injection_ids is not None:
+        for image_id, s in enumerate(corrupted):
+            if s:
+                sdc_injection_ids.append(injections[image_id // BATCH_SIZE])
 
     sdc = (torch.sum(corrupted) + (1 if over_approximate else 0)) / torch.sum(base_correct)
     z = 1.96  # 95% confidence interval
