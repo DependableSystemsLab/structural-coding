@@ -1,6 +1,6 @@
 # Structural Coding
 
-Experimental code for DSN 2022 submission #165
+Experimental code for Supercomputing 2022 submission 319
 
 ## Automatic Protection
 
