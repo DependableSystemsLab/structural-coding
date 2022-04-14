@@ -10,7 +10,7 @@ mkdir -p $DIRECTORY/home
 mkdir -p $DIRECTORY/results
 mkdir -p $DIRECTORY/data
 
-docker build -t dsn2022paper165/sc .
+#docker build -t dsn2022paper165/sc .
 #JOBS=`docker run --env SHARD=$SHARD --env INJECTIONS_RANGE="0-$INJECTIONS-1" dsn2022paper165/sc python ./array_count.py`
 
 #docker run -v $DIRECTORY/home/:/root/ -v $DIRECTORY/results/:/code/linearcode/results/ --env SHARD=$SHARD --env INJECTIONS_RANGE="0-$INJECTIONS-1" dsn2022paper165/sc ./pseudo_slurm_map.sh $JOBS

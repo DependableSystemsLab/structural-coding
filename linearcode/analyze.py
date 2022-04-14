@@ -745,9 +745,9 @@ def ecc_protection():
         coded[0][1] = perturbed[1]
     erasure = ec.erasure(coded, checksum, dim=1)
     corrected = sc.decode(coded, erasure=erasure, dim=1)
-    print(corrected[0][0], file=open(get_storage_filename({'txt': 'chipkill_example_corrected_1', },
+    print(float(corrected[0][0]), file=open(get_storage_filename({'txt': 'chipkill_example_corrected_1', },
                                                                extension='.tex', storage='../thesis/data/'), mode='w'))
-    print(corrected[0][1], file=open(get_storage_filename({'txt': 'chipkill_example_corrected_2', },
+    print(float(corrected[0][1]), file=open(get_storage_filename({'txt': 'chipkill_example_corrected_2', },
                                                                extension='.tex', storage='../thesis/data/'), mode='w'))
 
 
